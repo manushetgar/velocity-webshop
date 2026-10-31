@@ -1,0 +1,14 @@
+{
+  "supplier": "Global Cycle Supply Ltd.",
+  "generatedAt": "2026-10-26T09:00:00Z",
+  "data": {
+    "items": [
+      { "sku": "CHAI0100", "title": "12-Speed Chain", "details": "126 links, quick link included, compatible with 12-speed drivetrains.",
+        "unitPrice": { "amount": 39.9, "currency": "EUR" }, "inventory": { "available": 75, "warehouse": "MAN-1" } },
+      { "sku": "GRIP0100", "title": "Ergo Grips", "details": "Ergonomic lock-on grips with wing support.",
+        "unitPrice": { "amount": 24.0, "currency": "EUR" }, "inventory": { "available": 48, "warehouse": "MAN-1" } },
+      { "sku": "EBK1000", "title": "E-Trekking", "details": "Trekking e-bike with 625 Wh battery, mid-drive motor and up to 120 km range.",
+        "unitPrice": { "amount": 2999.0, "currency": "EUR" }, "inventory": { "available": 10, "warehouse": "MAN-2" } }
+    ]
+  }
+}

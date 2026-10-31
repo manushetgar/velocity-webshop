@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Nordic Gear AB - article export of the warehouse system -->
+<Catalog supplier="Nordic Gear AB" created="2026-10-26">
+  <Article id="SADL0100">
+    <Name>Comfort Saddle</Name>
+    <Description>Ergonomic saddle with relief channel and gel padding.</Description>
+    <Price currency="EUR">49.90</Price>
+    <Stock>35</Stock>
+  </Article>
+  <Article id="JRSY0100">
+    <Name>Cycling Jersey</Name>
+    <Price currency="EUR">47.90</Price>
+    <Stock>40</Stock>
+  </Article>
+  <Article id="GLOV0100">
+    <Name>Gloves</Name>
+    <Price currency="EUR">22.90</Price>
+    <Stock>60</Stock>
+  </Article>
+</Catalog>

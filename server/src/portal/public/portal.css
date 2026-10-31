@@ -1,0 +1,215 @@
+/* SupplyLink - supplier portal of VeloCity (separate site, deliberately different look from the shop) */
+/* Design tokens of the portal (teal instead of the shop's blue). */
+:root {
+  /* Page background. */
+  --bg: #f3f6f5;
+  /* Card background. */
+  --surface: #ffffff;
+  /* Light panel background. */
+  --surface-2: #f7faf9;
+  /* Text color. */
+  --text: #0f1f1c;
+  /* Muted text. */
+  --muted: #5b6b67;
+  /* Borders. */
+  --border: #dde5e2;
+  /* Brand color (teal). */
+  --primary: #0f766e;
+  /* Text on the brand color. */
+  --primary-ink: #ffffff;
+  /* Light brand background. */
+  --primary-soft: #e6f4f1;
+  /* Green (applied). */
+  --ok: #15803d;
+  /* Light green. */
+  --ok-soft: #e8f6ec;
+  /* Red (rejected). */
+  --bad: #b42318;
+  /* Light red. */
+  --bad-soft: #fdeceb;
+  /* Orange (waiting, partial). */
+  --wait: #b45309;
+  /* Light orange. */
+  --wait-soft: #fff4e2;
+  /* Corner radius. */
+  --radius: 12px;
+  /* System font. */
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  /* Default text color. */
+  color: var(--text);
+  /* Default background. */
+  background: var(--bg);
+}
+/* Widths include padding and border. */
+* { box-sizing: border-box; }
+/* Elements with the hidden attribute are never shown (even if a class sets display). */
+[hidden] { display: none !important; }
+/* Page body. */
+body { margin: 0; background: var(--bg); line-height: 1.5; }
+/* Page titles. */
+h1 { font-size: 1.6rem; margin: 0 0 4px; letter-spacing: -.01em; }
+/* Card titles. */
+h2 { font-size: 1.02rem; margin: 0 0 12px; }
+/* Monospace font for code and reports. */
+code, pre { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .85em; }
+/* Inline code box. */
+code { background: var(--surface-2); border: 1px solid var(--border); border-radius: 5px; padding: 0 4px; }
+/* Muted text. */
+.muted { color: var(--muted); }
+/* Small text. */
+.small { font-size: .85rem; }
+/* Error text. */
+.error { color: var(--bad); }
+/* Centered content width. */
+.wrap { max-width: 1160px; margin: 0 auto; padding: 0 24px; }
+
+/* Dark teal top bar. */
+.top { background: #0b2f2b; color: #fff; }
+/* Top bar content in one row. */
+.top-inner { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 64px; flex-wrap: wrap; padding-top: 8px; padding-bottom: 8px; }
+/* Logo and name. */
+.brand { display: flex; align-items: center; gap: 12px; }
+/* Name and sub title stacked. */
+.brand span { display: grid; }
+/* Sub titles in the top bar. */
+.brand small, .who small { color: #a7c9c3; font-size: .78rem; }
+/* Logo square. */
+.logo { width: 36px; height: 36px; border-radius: 9px; background: #14b8a6; display: grid; place-items: center; }
+/* Logo drawing. */
+.logo svg { width: 22px; height: 22px; fill: none; stroke: #04201d; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+/* Logged-in supplier and logout. */
+.who { display: flex; align-items: center; gap: 14px; }
+/* Supplier and user right aligned. */
+.who span { display: grid; text-align: right; }
+
+/* Base style of buttons and button links. */
+button, .button { font: inherit; font-weight: 600; font-size: .92rem; border-radius: 9px; padding: 9px 14px; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+/* Hover: teal frame. */
+button:hover, .button:hover { border-color: var(--primary); }
+/* Primary button. */
+.primary { background: var(--primary); border-color: var(--primary); color: var(--primary-ink); }
+/* Primary button on hover. */
+.primary:hover { background: #0b5f59; }
+/* Transparent button (top bar, dialog). */
+.ghost { background: transparent; border-color: rgba(255, 255, 255, .25); color: inherit; }
+/* Full width. */
+.block { width: 100%; }
+/* Link-like button. */
+.link { border: 0; background: none; color: var(--primary); padding: 2px 4px; font-weight: 600; }
+/* Inputs. */
+input { font: inherit; width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 9px; margin-top: 6px; background: #fff; }
+/* Focused input. */
+input:focus { outline: 2px solid var(--primary-soft); border-color: var(--primary); }
+/* Labels. */
+label { display: block; font-weight: 600; font-size: .9rem; margin-bottom: 14px; }
+
+/* Card. */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+/* Card head: title and hint. */
+.card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+/* Vertical stack of cards. */
+.stack { display: grid; gap: 18px; align-content: start; min-width: 0; }
+/* Dashboard: two columns. */
+.grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 18px; }
+/* Deliveries card spacing. */
+.deliveries-card { margin: 18px 0 40px; }
+/* Page head spacing. */
+.page-head { padding: 28px 0 18px; }
+
+/* Login view: form and explanation side by side. */
+.login { display: grid; grid-template-columns: minmax(0, 420px) minmax(0, 1fr); gap: 32px; padding: 48px 0; align-items: start; }
+/* Login title. */
+.login-card h1 { margin-bottom: 6px; }
+/* Explanation column. */
+.login-aside { padding: 8px 0; }
+/* Steps list. */
+.login-aside ol { padding-left: 20px; display: grid; gap: 10px; }
+/* Demo suppliers box. */
+.demo { border-top: 1px solid var(--border); margin-top: 18px; padding-top: 12px; }
+/* Demo buttons stacked. */
+.demo-list { display: grid; gap: 8px; }
+/* Demo button: name left, details right. */
+.demo-list button { justify-content: space-between; font-weight: 500; text-align: left; }
+/* Details in demo buttons. */
+.demo-list small { color: var(--muted); }
+
+/* Drop zone for the upload. */
+.drop { display: grid; justify-items: center; gap: 6px; text-align: center; padding: 30px 16px; border: 2px dashed #a9c9c3; border-radius: var(--radius); background: var(--surface-2); cursor: pointer; margin: 0; font-weight: 400; }
+/* The real file input is invisible (the whole zone opens the dialog). */
+.drop input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+/* Drop zone while a file is dragged over it, and on hover. */
+.drop.over, .drop:hover { border-color: var(--primary); background: var(--primary-soft); }
+/* Upload icon. */
+.drop-icon svg { width: 34px; height: 34px; fill: none; stroke: var(--primary); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+/* Result box of an upload. */
+.result { margin-top: 14px; padding: 12px 14px; border-radius: 9px; font-size: .9rem; overflow-wrap: anywhere; }
+/* Applied: green. */
+.result.ok { background: var(--ok-soft); color: var(--ok); }
+/* Rejected: red. */
+.result.bad { background: var(--bad-soft); color: var(--bad); }
+/* Waiting: orange. */
+.result.wait { background: var(--wait-soft); color: var(--wait); }
+/* Problem list in the result box. */
+.result ul { margin: 6px 0 0; padding-left: 18px; }
+
+/* Tables scroll horizontally on small screens. */
+.table-wrap { overflow-x: auto; }
+/* Table base. */
+.table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+/* Column titles. */
+.table th { text-align: left; font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); padding: 8px 10px; border-bottom: 1px solid var(--border); background: var(--surface-2); }
+/* Cells. */
+.table td { padding: 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+/* No line under the last row. */
+.table tr:last-child td { border-bottom: 0; }
+/* No line break. */
+.nowrap { white-space: nowrap; }
+/* File name column. */
+.file { overflow-wrap: anywhere; min-width: 160px; }
+/* Status badge. */
+.badge { display: inline-block; font-size: .72rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); white-space: nowrap; }
+/* Applied: green. */
+.badge.applied { background: var(--ok-soft); color: var(--ok); border-color: #b7e2c3; }
+/* Rejected: red. */
+.badge.rejected { background: var(--bad-soft); color: var(--bad); border-color: #f4c2bd; }
+/* Waiting, received and partly applied: orange. */
+.badge.waiting, .badge.received, .badge.partial { background: var(--wait-soft); color: var(--wait); border-color: #f5d6a8; }
+
+/* Fact list: label and value. */
+.facts { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 6px 12px; margin: 0 0 14px; font-size: .9rem; }
+/* Labels. */
+.facts dt { color: var(--muted); font-weight: 600; }
+/* Values (long ones break). */
+.facts dd { margin: 0; overflow-wrap: anywhere; }
+/* Mapping table spacing. */
+.mapping { margin-bottom: 14px; }
+
+/* Report dialog. */
+dialog { border: 1px solid var(--border); border-radius: var(--radius); padding: 0; width: min(720px, calc(100vw - 32px)); }
+/* Dark background behind the dialog. */
+dialog::backdrop { background: rgba(11, 47, 43, .45); }
+/* Dialog head. */
+.dialog-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+/* Dialog title. */
+.dialog-head h2 { margin: 0; }
+/* Close button in the dialog. */
+.dialog-head .ghost { color: var(--text); border-color: var(--border); padding: 4px 10px; }
+/* Report text. */
+dialog pre { margin: 0; padding: 18px; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 70vh; overflow: auto; }
+
+/* Tablets: one column. */
+@media (max-width: 900px) {
+  /* Dashboard and login in one column. */
+  .grid, .login { grid-template-columns: minmax(0, 1fr); }
+  /* Less padding. */
+  .login { padding: 24px 0; }
+}
+/* Phones. */
+@media (max-width: 600px) {
+  /* Smaller side padding. */
+  .wrap { padding: 0 16px; }
+  /* Fact lists in one column. */
+  .facts { grid-template-columns: minmax(0, 1fr); }
+  /* Supplier name left aligned. */
+  .who span { text-align: left; }
+}

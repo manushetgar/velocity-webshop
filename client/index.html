@@ -1,0 +1,22 @@
+<!doctype html>
+<!-- index.html - the only HTML page of the React app (single page application). Vite serves it during -->
+<!-- development (npm run dev) and copies it into client/dist for production (npm run build). -->
+<!-- Language of the document: English (used by screen readers and spell checking). -->
+<html lang="en">
+  <!-- Head: information about the page that is not shown on the page itself. -->
+  <head>
+    <!-- Character set UTF-8, so umlauts and the euro sign are displayed correctly. -->
+    <meta charset="UTF-8" />
+    <!-- Responsive layout: the page width follows the device width (phones and tablets). -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Title in the browser tab. -->
+    <title>Simple Web Shop</title>
+  </head>
+  <!-- Body: React renders the whole shop into the div below. -->
+  <body>
+    <!-- Mount point of the React app (main.jsx calls createRoot(document.getElementById('root'))). -->
+    <div id="root"></div>
+    <!-- Loads the app as an ES module; Vite bundles main.jsx and everything it imports. -->
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

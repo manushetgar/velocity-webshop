@@ -1,0 +1,33 @@
+# Dependencies and build output
+**/node_modules/
+**/.vite/
+**/.vite-temp/
+**/dist/
+**/build/
+cf-dist/
+
+# Local databases (the shop recreates server/data/webshop.db on start)
+server/data/
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Secrets
+.env
+.env.*
+!.env.example
+xsuaa-key.json
+*-key.json
+
+# Runtime file-transfer folders (inbox/processed/error)
+server/transfer/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log

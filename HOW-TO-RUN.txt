@@ -1,0 +1,264 @@
+VELOCITY BIKE SHOP - LAB 1 + LAB 2 (Systems Integration, FH Aachen)
+HOW TO RUN
+=====================================================================
+
+This folder contains the current version of our web shop (Lab 1 + Lab 2):
+React interface + Node.js/Express server + SQLite. The shop connects to the
+SAP Mini-ERP of Lab 0: products, prices and stock come from the ERP, orders
+are created in the ERP and the stock goes down in the ERP. Lab 2: the same
+product data can also be transferred as FILES instead of through the API
+(Admin > File transfer, section 7), and suppliers deliver their own files
+through a supplier portal and FTP (section 8).
+
+More details:
+  docs\Lab0-Guide-MiniERP-SAP-BTP.pdf    -> Mini-ERP, SAP BTP, HANA
+  docs\Lab1-Guide-VeloCity-Web-Shop.pdf  -> shop, architecture, design decisions
+  README.md                              -> technical summary (Lab 1 + Lab 2)
+
+---------------------------------------------------------------------
+1) REQUIREMENTS (once)
+---------------------------------------------------------------------
+  a) Node.js 22 LTS (22.12 or newer): https://nodejs.org
+     Check:  node -v
+
+  b) The course repository and the Mini-ERP (Lab 0):
+       git clone https://codeberg.org/ceedee666/systems-integration.git
+       cd systems-integration\src\simple-erp
+       npm install
+
+  c) Unzip this folder (e.g. Desktop\webshop) and run in it:
+       npm install
+
+  WINDOWS NOTE: if PowerShell says "running scripts is disabled" (npm.ps1),
+  type npm.cmd instead of npm and npx.cmd instead of npx:
+       npm.cmd install      npm.cmd run dev      npx.cmd cds watch
+
+---------------------------------------------------------------------
+2) RUNNING IT - OPTION A: ONE CLICK (Windows)
+---------------------------------------------------------------------
+  Double-click start-local.cmd. Two windows open:
+    - "SAP Mini-ERP - cds watch"        -> http://localhost:4004
+    - "VeloCity web shop - npm run dev" -> http://localhost:5173
+  After a few seconds the shop opens in the browser by itself.
+  To stop everything, close the two windows.
+
+  IMPORTANT: the script looks for the Mini-ERP in this folder:
+      %USERPROFILE%\systems-integration\src\simple-erp
+      (e.g. C:\Users\<your name>\systems-integration\src\simple-erp)
+  If the repository was cloned somewhere else, open start-local.cmd in
+  Notepad and change the line "set ERP_DIR=..." to your path.
+
+---------------------------------------------------------------------
+3) RUNNING IT - OPTION B: BY HAND (Windows / Mac / Linux)
+---------------------------------------------------------------------
+  Open two terminals and keep both open:
+
+  Terminal 1 (ERP):
+      cd <repository>/src/simple-erp
+      npx cds watch                 (Windows: npx.cmd cds watch)
+
+  Terminal 2 (shop):
+      cd <this folder>
+      npm run dev                   (Windows: npm.cmd run dev)
+
+  Browser: http://localhost:5173
+
+---------------------------------------------------------------------
+4) LOGGING IN AND TRYING IT OUT
+---------------------------------------------------------------------
+  - The login page has a "Demo accounts" box: one-click login for Admin and
+    Customer (Max Mustermann). The values are in server\.env.example.
+  - The header should say "Live stock from Local SAP (cds watch)".
+  - Buy a bike -> the order is created in the ERP first and the stock goes
+    down in the ERP. To see the ERP: http://localhost:4004 (user alice / alice)
+  - Admin panel: Overview, Products, Orders, Customers, SAP connectors,
+    File transfer, Suppliers.
+  - New customers can register with "Create one".
+
+  NOTE: the local ERP keeps its data in memory. When cds watch is restarted,
+  stock and orders go back to the initial lecture data (2 products: MTB,
+  Gravel; 1 customer). The shop loads its demo catalog of 14 products into
+  the ERP again automatically when the ERP restarts.
+
+---------------------------------------------------------------------
+5) CONNECTING TO THE ERP ON SAP BTP (optional)
+---------------------------------------------------------------------
+  The shop needs an XSUAA service key of the ERP on BTP. In a terminal
+  that is logged in with cf (cf login -a https://api.cf.us10-001.hana.ondemand.com --sso):
+      cf create-service-key simple-erp-auth-api webshop-key
+      cf service-key simple-erp-auth-api webshop-key
+  Save the JSON part of the output as server\xsuaa-key.json.
+  PowerShell, in this folder:
+      $k = cf service-key simple-erp-auth-api webshop-key | Out-String
+      $k.Substring($k.IndexOf('{')) | Out-File -Encoding ascii server\xsuaa-key.json
+
+  Then either
+    a) in server\.env (copy of server\.env.example), BEFORE the first start:
+         ERP_URL=https://<org>-<space>-simple-erp-srv.cfapps.us10-001.hana.ondemand.com
+         ERP_XSUAA_KEY_FILE=./xsuaa-key.json
+       (cf app simple-erp-srv shows the address under "routes")
+    or
+    b) Admin > SAP connectors > Add connector > template "SAP BTP (Cloud Foundry)":
+         ERP URL as above, service key file ./xsuaa-key.json
+       "Test", then "Use this ERP".
+  !! xsuaa-key.json and server\.env are SECRET: do not share them and never
+     put them into a zip or git.
+
+---------------------------------------------------------------------
+6) CLOUD VERSION (SAP BTP Cloud Foundry)
+---------------------------------------------------------------------
+  Live address (our trial account):
+    https://369eca91trial-dev-velocity-webshop.cfapps.us10-001.hana.ondemand.com
+  In the trial account everything stops every night. Before a presentation,
+  in this order:
+    1. HANA Cloud Central > hana-erp > Start  (wait until it is "Running")
+    2. cf start simple-erp-srv
+    3. cf start velocity-webshop
+  Deploying to your own account (needs the cf CLI):
+    npm run cf:build
+    cd cf-dist
+    cf push
+    cf set-env velocity-webshop ADMIN_PASSWORD 'YourPassword'
+    cf restart velocity-webshop
+  Details: README.md ("Deploy to SAP BTP") and docs\Lab0 guide.
+
+---------------------------------------------------------------------
+7) LAB 2 - TRANSFERRING PRODUCTS AS FILES (File transfer)
+---------------------------------------------------------------------
+  Switch it on: Admin > File transfer > button "File transfer" (top right).
+  (Back with "API (live)". The same setting is in the connector's Edit
+  dialog: "Product data reaches the shop via".)
+
+  What happens?
+    ERP export job --CSV--> server\transfer\inbox  --> shop import
+                                               |--> processed\ (success)
+                                               |--> error\  (rejected + .error.txt report)
+  - Export: the ERP's own CSV export (GET /rest/api/getProducts()).
+    Every 60 s, a new file is written ONLY if the ERP data changed.
+    "Export from ERP now" does it at once.
+  - Import: the inbox is checked every 10 s. "Import inbox now" does it at once.
+  - File name rule: products_<source>_<YYYYMMDDTHHMMSSZ>.csv
+      e.g. products_local_20261026T154200Z.csv   (time in UTC)
+  - "Upload file..." accepts a file by hand: the ERP's CSV or the .xlsx of
+    "Export to Spreadsheet" in the ERP's Fiori app "Manage Products".
+  - A file is ALWAYS the complete product list: a product that is missing in
+    the file is removed from the shop.
+
+  Error handling (a file is accepted completely or not at all):
+    wrong file name, a file of another ERP, the same file twice, an outdated
+    file, a file dated in the future, an empty file, an HTML/damaged file,
+    a missing column, an empty/wrong price or stock, the same product twice
+    -> moved to the error\ folder with a .error.txt report next to it, and
+    shown in the History table.
+    ERP down: the export error is logged once, the shop keeps working with
+    the data of the last file.
+
+  Quick demo:
+    1. Switch on File transfer -> the first file arrives automatically
+       (see History).
+    2. Change a price in the ERP (http://localhost:4004, alice/alice)
+       -> within 1 minute a new file + import, the new price in the shop.
+    3. Upload a broken CSV (e.g. price "abc") -> rejected + "show problems".
+
+  Note: in File transfer mode orders do not go to the ERP (they stay in the
+  shop as in Lab 1) and the stock goes down in the shop; the next file brings
+  the ERP's stock again. This is the consistency problem of file based
+  integration (Lab 3: RPC solves it). Details and discussion points:
+  README.md > "Lab 2".
+
+---------------------------------------------------------------------
+8) SUPPLIERS: PORTAL + FTP (Lab 2 extension)
+---------------------------------------------------------------------
+  Supply chain partners send product, price and stock data in THEIR OWN
+  formats; the shop translates the file, writes it into the SAP ERP first
+  and then updates itself from the ERP. Both channels start with the shop:
+
+    Supplier portal (separate site): http://localhost:3200
+    FTP server (for systems):        ftp://127.0.0.1:2121
+
+  Demo suppliers (password for all: supplier123, server\.env.example):
+    bikeparts    BikeParts GmbH (Cologne)        German CSV (; separator, 12,90)
+    globalcycle  Global Cycle Supply (UK)        JSON (nested fields)
+    nordicgear   Nordic Gear AB (Sweden)         XML
+    celticparts  Celtic Cycle Parts (Ireland)    Excel with its own column names
+                                                 (Part Number, Unit Price, Qty Available)
+  Sample files: server\src\portal\samples\  (also "Download sample file" in
+  the portal; broken-bikeparts.csv = an example with errors)
+
+  Demo:
+    1. http://localhost:3200 -> log in as "bikeparts" -> drag and drop
+       bikeparts.csv -> "applied": 2 new products + 4 price/stock changes.
+    2. The new products and prices appear in the shop (localhost:5173).
+    3. Admin > Suppliers: all deliveries, the mapping profile, "Test with a
+       file" (shows how a file is read without importing it).
+    4. Upload broken-bikeparts.csv -> "rejected", nothing changes,
+       "acknowledgement" shows the error report.
+    5. FileZilla: host 127.0.0.1, port 2121, user nordicgear,
+       password supplier123 -> put nordicgear.xml into /inbox ->
+       a few seconds later the .ack.txt appears in /outbox.
+       (FileZilla warns that TLS is not supported: local demo, accept it.)
+
+  Rules: a file is accepted completely or not at all; if the ERP is down the
+  file is "waiting" and is processed automatically when the ERP is back;
+  every supplier may only change the fields it is allowed to (e.g.
+  BikeParts: price + stock only); only prices in EUR are accepted.
+  Note: the local ERP (cds watch) runs in memory; when it restarts, the
+  products created by suppliers are gone -> deliver the files again.
+
+  WHERE IS THE DATA WRITTEN? (Local / Cloud / Both)
+  Chosen in Admin > Suppliers, card "Write supplier data to":
+    Active connector  the shop's active connector (default)
+    Local             only the ERP on this computer (cds watch)
+    Cloud             only the ERP on SAP BTP (HANA Cloud)
+    Both              both of them
+  - This shop updates itself right away from its active connector; the cloud
+    shop on SAP BTP picks up changes in SAP BTP with its own ERP sync (60 s).
+  - Both, with one ERP down: the reachable ERP is written at once, the file
+    waits ("waiting") only for the other one and is completed automatically
+    when that ERP is back (an ERP that was written is not written twice).
+  - A problem in only one ERP (e.g. a product that exists only locally)
+    rejects the file before anything is written. If an ERP refuses the data
+    after the other one was written, the result is "partial" (the report
+    shows what happened in which system).
+  - For Cloud, the SAP BTP connector must exist in Admin > SAP connectors
+    (see section 5).
+
+---------------------------------------------------------------------
+9) COMMON PROBLEMS
+---------------------------------------------------------------------
+  "npm.ps1 cannot be loaded"          -> use npm.cmd / npx.cmd.
+  "'concurrently' is not recognized"  -> run npm install in this folder first.
+  "Port 3001/5173 is already in use"  -> close the old terminal windows.
+  "[ftp] port 2121 is already in use" -> another program uses port 2121;
+                                         set FTP_PORT=2122 in server\.env.
+  Shop: "catalog is not available"    -> the ERP is not running; start
+                                         cds watch and reload the page.
+  "cds" not found                     -> npm install in the simple-erp folder,
+                                         then npx cds watch.
+  Products/orders were reset          -> normal: the local ERP runs in memory.
+  Start completely from scratch       -> npm run reset-db (deletes the shop
+                                         database; it is created again on the
+                                         next start)
+
+---------------------------------------------------------------------
+10) WHAT IS IN THIS FOLDER?
+---------------------------------------------------------------------
+  start-local.cmd        one-click start on Windows (ERP + shop)
+  package.json           npm workspaces: server + client
+  server\                Express API, SQLite, SAP ERP integration
+  server\.env.example    settings template (optional: copy it to server\.env)
+  server\transfer\       Lab 2 file folders (inbox/processed/error and
+                         suppliers\<id>\...), created by the shop on the first start
+  server\src\portal\     supplier portal (separate site) + sample files
+  client\                React interface (pages, components)
+  scripts\cf-prepare.mjs creates the cloud package (cf-dist + manifest.yml)
+  docs\                  Lab 0 and Lab 1 guides (PDF)
+  README.md              technical summary
+
+  Every line of the code has an English comment above it that explains
+  what it does.
+
+  NOT in the zip (on purpose): node_modules (comes with npm install),
+  server\.env and xsuaa-key.json (secret), server\data (local database),
+  server\transfer (files created while running),
+  client\dist and cf-dist (build output).
