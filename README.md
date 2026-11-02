@@ -1,239 +1,303 @@
 # VeloCity Bike Shop
 
-Web shop for the Systems Integration lab (Prof. Christian Drumm, FH Aachen, winter term 2026/27).
-It covers Lab 1 (simple web shop) and Lab 2 (file-based product transfer) and is integrated with the
-course's SAP CAP Mini-ERP from Lab 0, either locally (`cds watch`) or on SAP BTP.
+A demo bike shop with customer accounts, a shopping cart, orders, and an admin area.
+It can run on its own or connect to a separate SAP Mini-ERP for product and order data.
+It also demonstrates exchanging product files and accepting supplier deliveries.
 
-- Lab specs: <https://codeberg.org/ceedee666/systems-integration/src/branch/main/lab>
-- Background and design decisions: [docs/Lab0-Guide-MiniERP-SAP-BTP.pdf](docs/Lab0-Guide-MiniERP-SAP-BTP.pdf), [docs/Lab1-Guide-VeloCity-Web-Shop.pdf](docs/Lab1-Guide-VeloCity-Web-Shop.pdf)
-- Audit and readiness for Lab 3+: [LAB_AUDIT_REPORT.md](LAB_AUDIT_REPORT.md)
+**Start here:** [Run locally](#run-locally) |
+[Try the shop](#try-the-shop) |
+[How integration works](#how-integration-works) |
+[Troubleshooting](#troubleshooting)
 
-## Architecture
+## What is in this repo?
 
-```mermaid
-flowchart LR
-  subgraph Browser
-    SPA["React 19 SPA<br/>(Vite 7, React Router 7)<br/>cart in localStorage"]
-    Portal["Supplier portal<br/>(static page)"]
-  end
-  subgraph Server["Express 5 server (Node.js)"]
-    API["REST API /api/*<br/>routes/"]
-    Services["Integration services<br/>erpClient · erpSync · erpOrders<br/>fileTransfer · supplierImport"]
-    FTP["FTP server :2121"]
-    DB[("SQLite<br/>better-sqlite3")]
-  end
-  subgraph ERP["SAP Mini-ERP (CAP)"]
-    Local["Local: cds watch :4004<br/>basic auth, in-memory"]
-    BTP["SAP BTP Cloud Foundry<br/>XSUAA OAuth, HANA Cloud"]
-  end
-  Files[["server/transfer/<br/>inbox · processed · error"]]
-  Supplier["Supplier systems"]
+- **Shop:** browse and search products, register or log in, update your address, check out, and view orders.
+- **Admin area:** manage products and orders, choose an ERP connection, import product files, and manage suppliers.
+- **Supplier portal and FTP server:** receive supplier files and send their product changes to the ERP.
 
-  SPA -- JSON --> API
-  Portal -- JSON --> API
-  API --> DB
-  API --> Services
-  Services -- "REST + OData v4" --> Local
-  Services -- "REST + OData v4" --> BTP
-  Services -- "CSV export / import" --> Files
-  Supplier -- "FTP upload" --> FTP --> Files
+The shop uses **React + Vite** in the browser, **Express on Node.js** for its API,
+and **SQLite** for local storage. The Mini-ERP is a separate application, not included here.
+
+```text
+Browser shop --> Shop API --> SQLite
+                    |
+                    +--> Mini-ERP API (when connected)
+
+File mode:  Mini-ERP --> Shop's export job --> Product file --> Shop import --> SQLite
+Suppliers:  Portal / FTP --> Map and validate file --> Mini-ERP --> Shop sync
 ```
 
-The browser only talks to the shop's own API. ERP credentials stay on the server. The ERP is the
-master for products, prices, stock and orders. The shop keeps a synchronised copy in SQLite.
+The browser calls the shop API, not the ERP directly. ERP credentials are used by the server.
 
-| Layer | Technology |
-|---|---|
-| Frontend | React 19, React Router 7, Vite 7, plain CSS |
-| Backend | Node.js 22+, Express 5 |
-| Database | SQLite via better-sqlite3 (`server/data/webshop.db`) |
-| Auth | bcryptjs hashes, server-side session tokens (24 h), roles `customer` / `admin` |
-| ERP | Mini-ERP REST `/rest/api` + OData v4 `/odata/v4/simple-erp`; basic auth locally, OAuth 2.0 client credentials on BTP |
+## Run locally
 
-## Prerequisites
+### 1. Install the shop
 
-- **Node.js 22.12 or newer** (22 LTS or 24 LTS). Check with `node -v`.
-- **npm 10+** (ships with Node).
-- **better-sqlite3** is a native module. Prebuilt binaries are downloaded for Windows, macOS and Linux
-  (x64/arm64) on supported Node versions, so normally no compiler is needed. If no prebuild matches
-  your platform, npm falls back to `node-gyp`, which needs Python 3 and a C++ toolchain:
-  - Windows: Visual Studio Build Tools with "Desktop development with C++"
-  - macOS: `xcode-select --install`
-  - Linux: `build-essential` (or equivalent)
-- For the ERP: the course repository and the SAP CDS CLI (`npm i -g @sap/cds-dk`), see Lab 0.
+You need **Node.js 22.12 or newer** and npm. Run these commands from the root of your
+local checkout (the folder containing this README):
 
-Windows PowerShell: if `npm.ps1` is blocked by the execution policy, use `npm.cmd` / `npx.cmd`.
+```text
+node --version
+npm ci
+```
 
-## Local setup
+This installs both the client and server using the root lockfile. Run dependency
+installation commands here, rather than separately inside the workspaces.
 
-```bash
-# 1. Mini-ERP (once)
+On Windows, use `npm.cmd` and `npx.cmd` if PowerShell blocks `npm.ps1` or `npx.ps1`.
+SQLite uses the native `better-sqlite3` package; see [Troubleshooting](#troubleshooting)
+if installation fails.
+
+### 2. Choose whether to use the ERP
+
+**To explore just the shop (no ERP required):**
+
+Before the first start, copy [server/.env.example](server/.env.example) to `server/.env`.
+For example, in PowerShell:
+
+```powershell
+Copy-Item server\.env.example server\.env
+```
+
+Add this line to the copied file:
+
+```dotenv
+ERP_ACTIVE=none
+```
+
+This starts the shop with its sample products and local stock. If you have already
+started it before, log in as admin and use **Admin > SAP connectors > Disconnect**
+instead: the active connector is saved in the database, not reselected from the
+environment on every start.
+
+**To use the local Mini-ERP:**
+
+The default connection expects an ERP at <http://localhost:4004>. In a separate
+folder, install and start it:
+
+```text
 git clone https://codeberg.org/ceedee666/systems-integration.git
-cd systems-integration/src/simple-erp
-npm install
-
-# 2. Shop
-git clone <this-repo-url> velocity-webshop
-cd velocity-webshop
-npm run install:ci        # = npm ci: installs server + client from package-lock.json
-cp server/.env.example server/.env   # optional, all values have defaults
 ```
 
-Run (two terminals):
+Then open `systems-integration`, enter its `src` folder and then `simple-erp`, and run:
 
-```bash
-# Terminal 1 - ERP on http://localhost:4004 (user alice / alice)
-cd systems-integration/src/simple-erp
+```text
+npm install
 npx cds watch
+```
 
-# Terminal 2 - shop: API on :3001, Vite dev server on :5173
-cd velocity-webshop
+Keep that terminal open. The shop's default ERP credentials are
+`service-user` / `service-user`. To open the ERP's browser apps, use `alice` / `alice`.
+The default local connector also creates missing demo-catalog products in the ERP
+and fills missing descriptions.
+
+No shop configuration file is needed for this default setup. If you previously
+selected standalone mode, activate **Local SAP (cds watch)** with **Use this ERP**
+in **Admin > SAP connectors**.
+
+### 3. Start the shop
+
+In another terminal, at this repo's root:
+
+```text
 npm run dev
 ```
 
-Open <http://localhost:5173>. The header should show "Live stock from Local SAP (cds watch)".
-
-On Windows, `start-local.cmd` starts both in separate windows. It expects the ERP in
-`%USERPROFILE%\systems-integration\src\simple-erp`; change `ERP_DIR` in the file otherwise.
-
-| Script | Purpose |
+| What | Default address |
 |---|---|
-| `npm run install:ci` | Clean, lockfile-exact install of both workspaces |
-| `npm run dev` | API (`node --watch`) + Vite dev server via `concurrently` |
-| `npm run build` | Production build of the client into `client/dist` |
-| `npm start` | Server only; serves `client/dist` too if it exists (everything on :3001) |
-| `npm run reset-db` | Deletes `server/data`; demo data is recreated on the next start |
-| `npm run cf:build` | Build + create `cf-dist/` with `manifest.yml` for `cf push` |
+| Web shop | <http://localhost:5173> |
+| Shop API health check | <http://localhost:3001/api/health> |
+| Supplier portal | <http://localhost:3200> |
+| Portal through the backend | <http://localhost:3001/portal/> |
+| Supplier FTP | `127.0.0.1`, port `2121` |
 
-The project uses npm workspaces (`server`, `client`) with a single root `package-lock.json`. Do not
-run `npm install` inside `client/` or `server/`; that would create a second, diverging lockfile.
+`npm run dev` starts the API and Vite together. Stop them with **Ctrl+C**.
+The API health check confirms the shop server is responding; it does not check ERP connectivity.
 
-### Configuration
+**Windows shortcut:** after installing both applications, [start-local.cmd](start-local.cmd)
+starts the ERP and shop in separate windows. It expects the ERP at
+`%USERPROFILE%\systems-integration\src\simple-erp`; edit `ERP_DIR` in the script if needed.
+It uses your existing shop settings, so it does not reactivate a disconnected connector.
 
-All settings live in `server/.env` (template: [server/.env.example](server/.env.example)). Paths are
-relative to `server/`, because the npm scripts start the server there. Connector settings only seed
-an empty database; afterwards they are managed in *Admin > SAP connectors*.
+## Try the shop
 
-`server/.env` and `server/xsuaa-key.json` contain secrets and are git-ignored. Never commit or zip them.
+These are the default accounts created when the database is first initialized:
 
-### Demo accounts
-
-Created on first start and offered as one-click logins on the login page:
-
-| Account | Login | Notes |
+| Role | Email or username | Password |
 |---|---|---|
-| Admin | `admin@webshop.local` / `admin123` | Hidden on the login page when `NODE_ENV=production`. In production the password must come from `ADMIN_PASSWORD`, otherwise a random one is used. |
-| Customer (Max Mustermann) | `customer@webshop.local` / `customer123` | |
-| Suppliers | `bikeparts`, `globalcycle`, `nordicgear`, `celticparts` / `supplier123` | Portal and FTP |
+| Shop admin | `admin@webshop.local` | `admin123` |
+| Customer | `customer@webshop.local` | `customer123` |
+| Suppliers (portal / FTP) | `bikeparts`, `globalcycle`, `nordicgear`, `celticparts` | `supplier123` |
 
-Set `DEMO_MODE=false` to hide all demo logins.
+1. Log in as the customer, add an in-stock product to the cart, and check out.
+   An address is required; the demo customer already has one.
+2. Open **My orders** to see the order. Checkout is a demo, not an online payment integration.
+3. Log in as admin and open **Admin** to manage products, orders, and integrations.
 
-## Lab 1: web shop
+Use these accounts only for local demonstrations. `DEMO_MODE=false` hides the shop's
+demo-login shortcuts; it does **not** disable or delete the accounts.
 
-| Requirement | Where to test |
+## How integration works
+
+An **ERP connector** stores the URL, credentials, and integration mode for one ERP.
+Manage connectors in **Admin > SAP connectors**; only one is active at a time.
+
+| Mode | Product data | Checkout |
+|---|---|---|
+| Standalone (disconnected) | Stored and managed in the shop's SQLite database. | Creates a local order and reduces local stock. |
+| API (default for a connector) | Copied from the active ERP on sync. Product creation and supported edits write to the ERP first. | By default, creates the ERP order first, then saves a local copy. ERP rejection prevents the local order. |
+| File transfer | Imported from CSV or XLSX snapshots. Change ERP-owned product details in the ERP, not in the shop. | Creates a local order only. A later snapshot can overwrite the locally reduced stock. |
+
+API synchronization runs at startup and every **60 seconds** by default. It also
+runs after relevant changes, or when you press **Sync now**. This is not a continuous
+live connection. `ERP_ORDERS=false` can disable ERP checkout in API mode.
+
+Removing a product in the shop is a local soft delete, not a deletion from the ERP.
+
+### Product files: ERP to shop
+
+Open **Admin > File transfer** and select **File transfer** for the active connector.
+
+1. The **shop server's export job** calls the ERP's CSV export endpoint
+   (`/rest/api/getProducts()`). This still needs a reachable ERP API.
+2. It writes a file to `server/transfer/inbox`. Scheduled exports check every
+   60 seconds by default and write a new file only when the exported content changes.
+3. The shop imports the file into SQLite, then moves it to `processed`.
+   Rejected files go to `error`, with an error report and an entry in **History**.
+
+The inbox is also polled every **10 seconds** by default. Use **Export from ERP now**
+and **Import inbox now** to run the steps manually, or **Upload file** to import an
+ERP CSV or an XLSX spreadsheet export without running the export job.
+
+Important details:
+
+- Inbox filenames follow `products_<source>_<YYYYMMDDTHHMMSSZ>[-n].csv` (or `.xlsx`).
+  `source` is the connector ID; browser uploads receive a generated `upload` filename.
+  The timestamp is UTC and the numeric suffix is optional.
+- Each file is a **full product snapshot**, not a list of changes. Products missing
+  from it are unlinked from that connector and disappear from its shop listing.
+- Validation errors reject the whole file before product data is changed.
+  Examples include missing required columns, invalid prices or stock, duplicate
+  product IDs, and invalid or outdated filenames.
+- If an export fails, the shop keeps its last imported data.
+- File-mode orders are **not sent back to the ERP**. Stock can therefore become
+  inconsistent between file imports.
+
+To try it: change a price in the ERP, export and import, then reload the shop.
+
+### Supplier files: supplier to ERP
+
+This is a separate flow from the ERP snapshot import above. Suppliers upload their
+own **CSV, JSON, XML, or XLSX** files through the portal or plain FTP. The shop maps
+and validates them, writes allowed product changes to the selected ERP target(s),
+then syncs the shop from its active ERP.
+
+- Set formats, field mappings, permitted updates, and ERP targets in **Admin > Suppliers**.
+- For FTP, use a supplier account, upload into `/inbox`, and read acknowledgements
+  in `/outbox`. This is unencrypted FTP, intended for a local demo.
+- Deliveries waiting for an unavailable ERP are retried automatically.
+- Try the [sample files](server/src/portal/samples/), including an intentionally broken CSV.
+
+## Configuration and saved data
+
+[server/.env.example](server/.env.example) lists the available settings and defaults.
+Copy it to `server/.env` only if you need changes, then restart the server.
+With the provided npm scripts, relative server paths are resolved from `server`.
+
+| Setting | Default / purpose |
 |---|---|
-| List products | Shop page `/` (categories, search, sort, stock badges), product page `/products/:id` |
-| Add / remove products | *Admin > Products*: create, edit, remove (soft delete), restore. With an ERP active, the ERP is written first. |
-| Product has name, description, price | Plus product ID (ERP key), currency, stock, category |
-| Register, log in, update profile | `/register`, `/login`, *My account* (profile, address, password) |
-| Customer has name, e-mail, address, purchase history | *My account > Orders* |
-| Create orders via cart + checkout | Cart > Checkout > Confirmation. The order is created in the ERP first; the shop only stores it if the ERP accepts it. |
-| Order stores customer, items, quantities, total, status | `orders` + `order_items` (price/name snapshot); status `NEW > PICKED > SHIPPED > COMPLETED / CANCELED` in *Admin > Orders* |
+| `PORT` | `3001`, shop API port |
+| `DB_FILE` | `./data/webshop.db`, SQLite file |
+| `ERP_ACTIVE` | `local` on a fresh local setup; `none` starts disconnected |
+| `ERP_SYNC_INTERVAL_S` | `60`; `0` disables the periodic sync/export timer |
+| `FILE_POLL_INTERVAL_S` | `10`; `0` disables the inbox polling timer |
+| `PORTAL_PORT` | `3200`; `0` leaves the portal available only under the backend's `/portal/` |
+| `FTP_PORT` | `2121`; `0` disables FTP |
 
-Quick check: log in as the demo customer, buy a bike, and watch the stock go down in the ERP
-(<http://localhost:4004>, Fiori app *Products*). Without an active connector the shop runs standalone
-with its own stock.
+Connector environment settings populate an empty connector list. Afterwards, edit
+connections in the admin UI. Seed-account settings do not update existing passwords.
+Changing `PORT` also requires updating the API proxy in [client/vite.config.js](client/vite.config.js)
+when using the Vite development server.
 
-## Lab 2: file transfer
+SQLite keeps shop accounts, sessions, orders, products, and integration settings across
+local restarts. In contrast, the default local Mini-ERP uses an **in-memory database**:
+restarting it resets its data, including ERP orders and supplier-created products.
 
-*Admin > File transfer* switches the active connector from the API to a file interface.
+**Reset warning:** stop the shop before running `npm run reset-db`. It deletes
+`server/data`, including the default shop database; it does not reset a custom
+`DB_FILE`, the ERP, browser cart data, or transfer folders.
 
-```
-ERP export job --CSV--> server/transfer/inbox --> shop import
-                                          |--> processed/  (success)
-                                          |--> error/      (rejected + <file>.error.txt)
-```
+Keep credentials private. Environment files, service keys, the local database, and
+runtime transfer folders are ignored by Git.
 
-| Aspect | Implementation |
+## Useful commands
+
+Run these at the repository root:
+
+| Command | Purpose |
 |---|---|
-| Export | ERP CSV export `GET /rest/api/getProducts()`, written as `.part` then renamed into `inbox/`. Every 60 s, only if the ERP data changed (SHA-256), or *Export from ERP now*. |
-| Import | Inbox polled every 10 s, or *Import inbox now* / *Upload file* (ERP CSV or the `.xlsx` from the Fiori *Export to Spreadsheet*). |
-| File name | `products_<source>_<YYYYMMDDTHHMMSSZ>[-n].csv\|xlsx`, UTC |
-| Semantics | Each file is a full snapshot: missing products are removed from the shop. All or nothing per file. |
-| Rejected files | wrong name, other ERP, duplicate, outdated, future timestamp, empty/HTML/damaged file, missing column, invalid price/stock, duplicate product ID |
+| `npm ci` | Install both workspaces from the lockfile (`npm run install:ci` is an alias). |
+| `npm run dev` | Start the API and Vite development server. |
+| `npm run build` | Build the frontend into `client/dist`. |
+| `npm start` | Start only the backend; also serves the built frontend, if present, at <http://localhost:3001>. |
+| `npm run reset-db` | Delete the default shop data directory (see warning above). |
+| `npm run cf:build` | Build the frontend and generate a Cloud Foundry deployment folder, `cf-dist`. |
 
-Demo: switch to *File transfer*, change a price in the ERP, wait up to a minute (or press
-*Export* + *Import*), the price changes in the shop. Upload a CSV with price `abc`: it is rejected and
-listed in *History* with its report.
+## Optional: SAP BTP
 
-In file mode orders stay in the shop and the next file overwrites the stock. That is the consistency
-problem of batch file integration that Lab 3 (RPC) addresses.
+For a **local shop connected to an ERP already deployed on SAP BTP**, save the ERP's
+XSUAA service-key JSON as `server/xsuaa-key.json`. Add a connector using the
+**SAP BTP (Cloud Foundry)** template, enter the ERP URL and `./xsuaa-key.json`,
+test it, then choose **Use this ERP**.
 
-### Supplier files (portal + FTP)
+For **deploying the shop itself**, the packaging script requires a BTP `ERP_URL`
+in the environment or `server/.env`. The generated manifest expects an existing
+`simple-erp-auth-api` service in the target Cloud Foundry space.
 
-Suppliers deliver data in their own formats; the shop maps it, writes it into the ERP via OData, and
-then syncs from the ERP.
-
-- Portal: <http://localhost:3200> (also under `/portal/` of the shop)
-- FTP: `ftp://127.0.0.1:2121`, upload into `/inbox`, acknowledgements in `/outbox` (plain FTP, local demo only)
-- Formats: CSV (any separator, decimal comma), JSON, XML, `.xlsx`; mapping profile and field rights per
-  supplier in *Admin > Suppliers*, including *Test with a file* (dry run)
-- Target ERP: *Admin > Suppliers > Write supplier data to*: active connector, local, cloud or both.
-  If one ERP is down the file waits and is retried automatically.
-- Samples: [server/src/portal/samples/](server/src/portal/samples/) (`broken-bikeparts.csv` shows the error handling)
-
-The local ERP is in-memory: after a `cds watch` restart, supplier-created products are gone.
-
-## SAP BTP
-
-**Shop locally, ERP on BTP.** Create a service key and save its JSON as `server/xsuaa-key.json`:
-
-```bash
-cf login -a https://api.cf.us10-001.hana.ondemand.com --sso
-cf create-service-key simple-erp-auth-api webshop-key
-cf service-key simple-erp-auth-api webshop-key   # copy the JSON part into server/xsuaa-key.json
+```text
+npm run cf:build
 ```
 
-Then either set `ERP_URL` and `ERP_XSUAA_KEY_FILE=./xsuaa-key.json` in `server/.env` before the first
-start, or add a connector in *Admin > SAP connectors* with the "SAP BTP (Cloud Foundry)" template.
+Enter the generated `cf-dist` folder, then:
 
-**Shop on BTP.**
-
-```bash
-npm run cf:build     # needs ERP_URL in server/.env
-cd cf-dist
-cf push
-cf set-env velocity-webshop ADMIN_PASSWORD '<password>'
-cf restart velocity-webshop
+```text
+cf push --no-start
+cf set-env velocity-webshop ADMIN_PASSWORD "replace-with-a-strong-password"
+cf start velocity-webshop
 ```
 
-The cloud app gets the XSUAA credentials through a service binding. Its SQLite file lives on the
-container disk and is reset on restart/push; ERP data in HANA is not affected. Trial accounts stop
-every night: start HANA, then `cf start simple-erp-srv`, then `cf start velocity-webshop`.
+Set the password **before the first start**: changing the environment later does not
+change an existing admin account. The generated deployment uses the bound XSUAA
+service for ERP access, serves the portal under `/portal/`, and disables FTP.
+Its SQLite database and transfer files are on ephemeral container storage, not a
+durable cloud database. Do not rely on them surviving restaging or instance replacement.
+This is a demo deployment, not a production-ready shop.
 
 ## Troubleshooting
 
-| Symptom | Fix |
+| Problem | What to check |
 |---|---|
-| `npm.ps1 cannot be loaded` | Use `npm.cmd` / `npx.cmd` |
-| `npm ci` fails with `EPERM` on Windows | A running dev server or editor locks files in `node_modules`; stop `npm run dev` and retry |
-| `npm ci` says the lockfile is out of sync | Someone changed a `package.json` without committing the updated `package-lock.json`; run `npm install` once at the repo root and commit the lockfile |
-| better-sqlite3 build errors | No prebuild for your Node/OS: install the C++ toolchain listed above, or use Node 22/24 LTS |
-| Port 3001 / 5173 / 3200 in use | Stop the old process, or set `PORT` / `PORTAL_PORT` in `server/.env` |
-| `[ftp] port 2121 is already in use` | Set `FTP_PORT=2122` (or `0` to disable) |
-| "catalog is not available" | The ERP is not running; start `cds watch` and reload |
-| Products/orders reset | Expected: the local ERP keeps data in memory |
+| `npm.ps1 cannot be loaded` | Use `npm.cmd` (and `npx.cmd`) on Windows. |
+| `npm ci` fails with `EPERM` | Stop this project's running development servers and retry; files may be locked. |
+| `better-sqlite3` fails to install | Try a supported Node LTS release, such as 22 or 24. If no prebuilt binary is available, a source build needs Python and a C++ toolchain (Visual Studio Build Tools on Windows). |
+| Empty catalog or ERP unavailable | Start the ERP and check the active connector's URL and credentials, then use **Sync now**. To work without an ERP, use **Disconnect**. |
+| A port is already in use | Stop the conflicting instance or change its port. See the `PORT` proxy note above; Vite's port is configured separately. |
+| A product file is rejected | Read **Admin > File transfer > History** and its error report. Check format, required fields, source, and timestamp. |
+| ERP data disappeared after restart | The default local ERP stores data in memory. The shop's SQLite database is separate. |
 
-## Project layout
+## Where to look in the code
 
-```
-client/src/        React app: pages/, components/, api.js (all /api calls), state.jsx (auth + cart)
-server/src/        index.js (app wiring), db.js (schema, migrations, seed), auth.js, catalog.js
-  routes/          products, customers, orders, admin, erp, fileTransfer, suppliers
-  services/        erpClient, erpSync, productSync, erpOrders, erpMasterData, connectors, serviceKey,
-                   inventory, fileTransfer, productFile, xlsxReader, suppliers, supplierFormats,
-                   supplierImport, ftpServer
-  portal/          supplier portal app, static page, sample files
-scripts/           cf-prepare.mjs (Cloud Foundry package)
-docs/              Lab 0 and Lab 1 guides
-```
+| Location | Responsibility |
+|---|---|
+| [client/src/pages](client/src/pages/) | Shop, account, checkout, and admin screens |
+| [client/src/components](client/src/components/) | Shared UI and integration-management screens |
+| [client/src/api.js](client/src/api.js), [client/src/state.jsx](client/src/state.jsx) | Browser API calls, authentication state, and cart state |
+| [server/src/index.js](server/src/index.js) | Starts the API, portal, FTP, and background jobs |
+| [server/src/db.js](server/src/db.js) | SQLite schema, migrations, sample data, and initial accounts |
+| [server/src/routes](server/src/routes/) | HTTP endpoints for shop and admin actions |
+| [server/src/services](server/src/services/) | ERP clients, sync, inventory, file parsing, and supplier processing |
+| [server/src/portal](server/src/portal/) | Supplier portal and sample deliveries |
+| [scripts/cf-prepare.mjs](scripts/cf-prepare.mjs) | Cloud Foundry packaging |
+
+Older setup and design walkthroughs are available in [docs](docs/); use the current
+code and the configuration template as the reference for runtime behavior.
