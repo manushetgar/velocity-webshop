@@ -1,977 +1,486 @@
-/* styles.css - all styles of the React shop in one file (no UI library). Sections: design tokens, base elements, */
-/* header/footer, buttons/forms, cards/tables, shop pages, checkout, account, admin, SAP connectors, file transfer, */
-/* suppliers and the responsive rules for small screens at the end. */
-/* =========================================================
-   VeloCity Bike Shop - design tokens
-   ========================================================= */
-/* Design tokens: colors, radii and shadows as CSS variables, used everywhere below with var(--name). */
 :root {
-  /* Page background (light grey). */
   --bg: #f6f7f9;
-  /* Background of cards and panels. */
   --surface: #ffffff;
-  /* Slightly darker panel background (table heads, inputs). */
   --surface-2: #f9fafb;
-  /* Main text color. */
   --text: #101828;
-  /* Secondary text color. */
   --text-2: #344054;
-  /* Muted text (hints, labels). */
   --muted: #667085;
-  /* Light border. */
   --border: #e4e7ec;
-  /* Stronger border (inputs, buttons). */
   --border-strong: #d0d5dd;
-  /* Brand color (buttons, links). */
   --primary: #3b5bdb;
-  /* Brand color on hover. */
   --primary-hover: #2f4ac4;
-  /* Very light brand color (backgrounds of highlights). */
   --primary-soft: #eef2ff;
-  /* Almost black (active chips). */
   --ink: #0b1324;
-  /* Green for success. */
   --success: #12805c;
-  /* Light green background. */
   --success-soft: #e7f6ef;
-  /* Orange for warnings. */
   --warning: #b54708;
-  /* Light orange background. */
   --warning-soft: #fff4e5;
-  /* Red for errors. */
   --danger: #c4320a;
-  /* Light red background. */
   --danger-soft: #fdecea;
-  /* Corner radius of cards. */
   --radius: 14px;
-  /* Corner radius of buttons and inputs. */
   --radius-sm: 9px;
-  /* Normal shadow of cards. */
   --shadow: 0 1px 2px rgba(16, 24, 40, .05), 0 1px 3px rgba(16, 24, 40, .06);
-  /* Large shadow (dialogs, hover). */
   --shadow-lg: 0 16px 32px -12px rgba(16, 24, 40, .22);
-  /* Font: Inter if installed, otherwise the system font. */
   font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  /* Default text color. */
   color: var(--text);
-  /* Default background. */
   background: var(--bg);
-  /* Smoother font rendering on macOS. */
   -webkit-font-smoothing: antialiased;
 }
 
-/* Widths include padding and border (easier layouts). */
 * { box-sizing: border-box; }
-/* No default margin around the page. */
 body { margin: 0; }
-/* Page titles. */
 h1 { font-size: 1.85rem; letter-spacing: -.025em; margin: 0 0 .3rem; line-height: 1.15; }
-/* Section titles. */
 h2 { font-size: 1.35rem; letter-spacing: -.02em; margin: 0; }
-/* Card titles. */
 h3 { margin: 0; font-size: 1.05rem; }
-/* Paragraphs without default margin (spacing comes from the layouts). */
 p { margin: 0; }
-/* Links in the brand color without underline. */
 a { color: var(--primary); text-decoration: none; }
-/* Underline on hover. */
 a:hover { text-decoration: underline; }
-/* Links that look like normal text. */
 a.plain { color: inherit; }
-/* Monospace font for code and IDs. */
 code, .mono { font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace; font-size: .85em; }
-/* Inline code with a light box. */
 code { background: var(--surface-2); border: 1px solid var(--border); border-radius: 5px; padding: 1px 5px; }
 
-/* App frame: full height, footer at the bottom. */
 .app { min-height: 100vh; display: flex; flex-direction: column; }
-/* Centered content with a maximum width. */
 .container { width: 100%; max-width: 1180px; margin: 0 auto; padding: 0 20px; }
-/* Main area grows, space above the footer. */
 .main { flex: 1; padding-bottom: 64px; }
-/* Space below the header. */
 .main > .container { padding-top: 28px; }
-/* Space below page titles. */
 .page-title { margin-bottom: 18px; }
-/* Muted text. */
 .muted { color: var(--muted); }
-/* Small text. */
 .small { font-size: .85rem; }
-/* Right aligned. */
 .right { text-align: right; }
-/* Centered. */
 .center { text-align: center; }
-/* No line break. */
 .nowrap { white-space: nowrap; }
-/* Error text. */
 .error { color: var(--danger); }
-/* Success text. */
 .success { color: var(--success); }
-/* Vertical stack with even gaps. */
 .stack { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr); }
-/* Horizontal row that wraps. */
 .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-/* Centered row. */
 .center-row { justify-content: center; margin-top: 8px; }
 
-/* =========================================================
-   Header & footer
-   ========================================================= */
-/* Sticky, slightly transparent top bar. */
 .topbar { background: rgba(255, 255, 255, .92); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 20; }
-/* Header content in one row. */
 .topbar-inner { display: flex; align-items: center; gap: 24px; height: 68px; }
-/* Logo link. */
 .brand { display: flex; align-items: center; gap: 10px; color: var(--text); white-space: nowrap; }
-/* No underline on the logo. */
 .brand:hover { text-decoration: none; }
-/* Square logo mark with a gradient. */
 .brand-mark { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, #3b5bdb, #5f3dc4); color: #fff; font-weight: 800; font-size: .82rem; letter-spacing: .03em; }
-/* Logo mark on dark backgrounds (login side panel). */
 .brand-mark.light { background: rgba(255, 255, 255, .16); }
-/* Shop name. */
 .brand-text { display: grid; line-height: 1.05; font-weight: 800; font-size: 1.08rem; letter-spacing: -.02em; }
-/* Sub title under the shop name. */
 .brand-text small { font-weight: 500; font-size: .72rem; color: var(--muted); letter-spacing: .02em; }
-/* Main navigation takes the free space. */
 .main-nav { display: flex; gap: 4px; flex: 1; }
-/* Navigation links. */
 .main-nav a, .nav-right > a { color: var(--text-2); padding: 8px 12px; border-radius: var(--radius-sm); display: inline-flex; align-items: center; gap: 7px; font-weight: 500; }
-/* Hover state of the navigation links. */
 .main-nav a:hover, .nav-right > a:hover { background: var(--bg); text-decoration: none; }
-/* Active page in the navigation. */
 .main-nav a.active { color: var(--primary); background: var(--primary-soft); }
-/* Right side of the header. */
 .nav-right { display: flex; align-items: center; gap: 6px; }
-/* Cart link with a frame. */
 .cart-link { border: 1px solid var(--border); background: var(--surface); }
-/* Cart link on the cart page. */
 .cart-link.active { border-color: var(--primary); color: var(--primary) !important; }
-/* Number badge (cart items). */
 .badge { background: var(--primary); color: #fff; border-radius: 999px; font-size: .72rem; font-weight: 700; min-width: 20px; padding: 1px 6px; text-align: center; }
-/* Round avatar with the first letter. */
 .avatar { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--primary-soft); color: var(--primary); font-size: .82rem; font-weight: 700; flex: none; }
-/* Large avatar (My account). */
 .avatar.large { width: 56px; height: 56px; font-size: 1.4rem; }
-/* Small label (admin, ERP number ...). */
 .tag { display: inline-block; border: 1px solid var(--border); border-radius: 6px; font-size: .7rem; padding: 1px 6px; color: var(--muted); font-weight: 600; margin-left: 6px; vertical-align: middle; white-space: nowrap; }
-/* Label for ERP data. */
 .tag.erp { border-color: #c7d2fe; background: var(--primary-soft); color: var(--primary); }
 
-/* Footer. */
 .footer { border-top: 1px solid var(--border); background: var(--surface); }
-/* Footer content in one row. */
 .footer-inner { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding-top: 22px; padding-bottom: 22px; flex-wrap: wrap; }
 
-/* =========================================================
-   Buttons & forms
-   ========================================================= */
-/* Base style of all buttons and button-like links. */
 button, a.button {
-  /* Font, border, colors. */
   font: inherit; font-weight: 600; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text);
-  /* Size, corners, pointer and transitions. */
   padding: 9px 16px; border-radius: var(--radius-sm); cursor: pointer; transition: background .15s, border-color .15s, box-shadow .15s, transform .1s;
-  /* Content centered in one line. */
   display: inline-flex; align-items: center; justify-content: center; gap: 7px; line-height: 1.2; white-space: nowrap; font-size: .94rem;
 }
-/* Hover. */
 button:hover:not(:disabled), a.button:hover { background: var(--bg); text-decoration: none; }
-/* Pressed: moves down a little. */
 button:active:not(:disabled) { transform: translateY(1px); }
-/* Disabled buttons are faded. */
 button:disabled { opacity: .5; cursor: not-allowed; }
-/* Primary button in the brand color. */
 button.primary, a.button.primary { background: var(--primary); border-color: var(--primary); color: #fff; box-shadow: 0 1px 2px rgba(59, 91, 219, .35); }
-/* Primary button on hover. */
 button.primary:hover:not(:disabled), a.button.primary:hover { background: var(--primary-hover); }
-/* Large buttons. */
 button.large, a.button.large { padding: 13px 22px; font-size: 1rem; }
-/* Full width. */
 button.block { width: 100%; }
-/* Takes the free space in a row. */
 button.grow { flex: 1; }
-/* Small buttons. */
 button.small-btn { padding: 6px 12px; font-size: .85rem; }
-/* Buttons that look like links. */
 button.link { border: none; background: none; color: var(--primary); padding: 6px 8px; font-weight: 600; box-shadow: none; }
-/* Link buttons on hover. */
 button.link:hover:not(:disabled) { background: none; text-decoration: underline; }
-/* Dangerous actions in red (remove, delete). */
 .danger, button.link.danger { color: var(--danger); }
-/* Icon-only button (x in dialogs). */
 .icon-btn { border: 0; background: transparent; font-size: 1.5rem; padding: 0 8px; line-height: 1; color: var(--muted); }
-/* Visible focus ring for keyboard users. */
 button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid #c7d2fe; outline-offset: 1px; }
 
-/* Inputs, text areas and select boxes. */
 input, textarea, select {
-  /* Font, full width, padding, border and corners. */
   font: inherit; width: 100%; padding: 10px 12px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
-  /* Colors and size. */
   background: #fff; color: var(--text); font-size: .95rem;
 }
-/* Disabled inputs. */
 input:disabled { background: var(--surface-2); color: var(--muted); }
-/* Checkboxes keep their size and use the brand color. */
 input[type='checkbox'] { width: auto; accent-color: var(--primary); }
-/* Labels stack their text over the input. */
 label { display: grid; gap: 6px; font-size: .86rem; color: var(--text-2); font-weight: 600; }
-/* Checkbox labels in one row. */
 label.check { display: inline-flex; align-items: center; gap: 8px; font-weight: 500; white-space: nowrap; }
-/* Form with stacked fields. */
 .form-stack { display: grid; gap: 14px; }
-/* Form in two columns. */
 .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
-/* Form in three columns. */
 .form-grid.three { grid-template-columns: repeat(3, 1fr); }
-/* Section titles inside a form, with a line above. */
 .form-grid h3 { margin-top: 6px; padding-top: 16px; border-top: 1px solid var(--border); }
-/* No line for the first title. */
 .form-grid .section-head h3, .form-grid > .span-all:first-child h3 { border: 0; padding: 0; margin: 0; }
-/* Grid item over all columns. */
 .span-all { grid-column: 1 / -1; }
-/* Grid item over two columns. */
 .span-2 { grid-column: span 2; }
-/* Narrow forms (password). */
 .narrow-form { max-width: 480px; }
 
-/* =========================================================
-   Cards, chips, tables, misc
-   ========================================================= */
-/* Card: white panel with border, corners and shadow. */
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; box-shadow: var(--shadow); }
-/* Space below card titles. */
 .card > h3 { margin-bottom: 14px; }
-/* Head row of a section: title left, actions right. */
 .section-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
-/* Title of a section head. */
 .section-head h3 { margin: 0; display: flex; align-items: center; gap: 8px; }
-/* Empty states with a dashed frame. */
 .empty { text-align: center; padding: 48px 16px; color: var(--muted); background: var(--surface); border: 1px dashed var(--border-strong); border-radius: var(--radius); display: grid; gap: 14px; justify-items: center; }
-/* Row of filter chips. */
 .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
-/* One chip (rounded button). */
 .chip { border-radius: 999px; padding: 7px 14px; font-size: .88rem; font-weight: 600; }
-/* Number in a chip. */
 .chip span { color: var(--muted); margin-left: 2px; }
-/* Selected chip. */
 .chip.active { background: var(--ink); border-color: var(--ink); color: #fff; }
-/* Number in a selected chip. */
 .chip.active span { color: #aab4c3; }
-/* Toolbar: buttons and inputs in a row. */
 .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-/* Inputs in toolbars keep their natural width. */
 .toolbar select, .toolbar input[type='search'] { width: auto; }
-/* Two columns: content and a 360 px side column. */
 .two-col { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 22px; align-items: start; }
-/* Two equal columns. */
 .two-col.even { grid-template-columns: 1fr 1fr; }
-/* Loading placeholder with a moving shimmer. */
 .skeleton { background: linear-gradient(90deg, #eef0f3 25%, #f6f7f9 50%, #eef0f3 75%) !important; background-size: 200% 100% !important; animation: shimmer 1.2s infinite; border: 0 !important; min-height: 340px; border-radius: var(--radius); }
-/* Animation of the shimmer. */
 @keyframes shimmer { to { background-position: -200% 0; } }
 
-/* Tables scroll horizontally on small screens. */
 .table-wrap { overflow-x: auto; }
-/* Table base. */
 .table { width: 100%; border-collapse: collapse; font-size: .92rem; }
-/* Column titles. */
 .table th { text-align: left; font-size: .74rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 700; padding: 10px 12px; border-bottom: 1px solid var(--border); background: var(--surface-2); }
-/* Cells. */
 .table td { padding: 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
-/* No line under the last row. */
 .table tr:last-child td { border-bottom: 0; }
-/* Removed products are faded. */
 .table tr.inactive td { opacity: .55; }
-/* Right aligned columns (prices, numbers). */
 .table th.right, .table td.right { text-align: right; }
-/* Product cell: picture and name. */
 .cell-product { display: flex; align-items: center; gap: 12px; }
-/* Name and ID stacked. */
 .cell-product > span { display: grid; }
 
-/* Small status dot. */
 .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex: none; }
-/* Green dot with a halo. */
 .dot.good { background: var(--success); box-shadow: 0 0 0 4px var(--success-soft); }
-/* Red dot with a halo. */
 .dot.bad { background: var(--danger); box-shadow: 0 0 0 4px var(--danger-soft); }
-/* Grey dot. */
 .dot.idle { background: var(--border-strong); }
 
-/* stock + status badges */
-/* Stock label. */
 .stock { font-size: .72rem; font-weight: 700; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
-/* In stock: green. */
 .stock.in { background: var(--success-soft); color: var(--success); }
-/* Low stock: orange. */
 .stock.low { background: var(--warning-soft); color: var(--warning); }
-/* Out of stock: red. */
 .stock.out { background: var(--danger-soft); color: var(--danger); }
-/* Order status label. */
 .status { font-size: .7rem; font-weight: 800; padding: 3px 9px; border-radius: 999px; background: var(--bg); letter-spacing: .03em; }
-/* NEW: blue. */
 .s-new { background: var(--primary-soft); color: var(--primary); }
-/* PICKED and SHIPPED: orange. */
 .s-picked, .s-shipped { background: var(--warning-soft); color: var(--warning); }
-/* COMPLETED: green. */
 .s-completed { background: var(--success-soft); color: var(--success); }
-/* CANCELED: red. */
 .s-canceled { background: var(--danger-soft); color: var(--danger); }
 
-/* =========================================================
-   Shop: hero, perks, catalog, product cards
-   ========================================================= */
-/* Dark banner of the start page with a blue glow. */
 .hero-banner { background: radial-gradient(1200px 400px at 85% 0%, #3b5bdb55, transparent 60%), linear-gradient(135deg, #0b1324 0%, #1b2a55 100%); color: #fff; }
-/* Banner content: text and picture in two columns. */
 .hero-inner { display: grid; grid-template-columns: 1.1fr .9fr; gap: 32px; align-items: center; padding-top: 56px; padding-bottom: 56px; }
-/* Small line above the headline. */
 .eyebrow { display: inline-block; font-size: .78rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #a5b4fc; margin-bottom: 14px; }
-/* Big headline; the size follows the screen width. */
 .hero-copy h1 { font-size: clamp(2.2rem, 4.6vw, 3.4rem); letter-spacing: -.035em; margin-bottom: 14px; }
-/* Banner text. */
 .hero-copy p { color: #c7d0e0; font-size: 1.08rem; max-width: 520px; }
-/* Banner buttons. */
 .hero-cta { display: flex; gap: 16px; align-items: center; margin-top: 26px; flex-wrap: wrap; }
-/* Pill with the ERP state. */
 .live-pill { display: inline-flex; align-items: center; gap: 10px; font-size: .88rem; color: #dbe2f0; background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .14); padding: 8px 14px; border-radius: 999px; }
-/* Banner picture. */
 .hero-art { color: #a5b4fc; display: grid; place-items: center; }
-/* Bike drawing with a shadow. */
 .hero-art svg { width: 100%; max-width: 440px; filter: drop-shadow(0 20px 30px rgba(0, 0, 0, .35)); }
-/* Thinner lines in the large drawing. */
 .hero-art svg g { stroke-width: 3; }
 
-/* Benefit tiles, overlapping the banner a little. */
 .perks { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: -28px; position: relative; }
-/* One benefit tile. */
 .perks > div { display: flex; gap: 12px; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); color: var(--primary); }
-/* Text of a tile. */
 .perks span { display: grid; color: var(--text); font-size: .9rem; }
-/* Small text of a tile. */
 .perks small { color: var(--muted); font-size: .78rem; }
 
-/* Catalog section. */
 .catalog { margin-top: 40px; }
-/* Catalog head: title and toolbar. */
 .catalog-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
-/* Search field with an icon. */
 .search-box { position: relative; display: flex; align-items: center; }
-/* Icon inside the search field. */
 .search-box svg { position: absolute; left: 11px; color: var(--muted); pointer-events: none; }
-/* Room for the icon. */
 .search-box input { padding-left: 36px; min-width: 220px; }
 
-/* Product grid: as many columns of at least 255 px as fit. */
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(255px, 1fr)); gap: 22px; }
-/* Product card. */
 .product-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; display: flex; flex-direction: column; box-shadow: var(--shadow); color: var(--text); transition: box-shadow .2s, transform .2s, border-color .2s; }
-/* Card on hover: lifts up with a larger shadow. */
 .product-card:hover { box-shadow: var(--shadow-lg); transform: translateY(-3px); text-decoration: none; border-color: #c7d2fe; }
-/* Text part of a card. */
 .product-body { padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
-/* Category and stock row. */
 .product-meta { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-/* Category label. */
 .category-label { font-size: .72rem; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; font-weight: 700; }
-/* Product name. */
 .product-card h3 { font-size: 1.12rem; }
-/* Description cut after two lines. */
 .product-card .desc { color: var(--muted); font-size: .88rem; flex: 1; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.6em; }
-/* Price and button row. */
 .product-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; gap: 10px; }
-/* Price. */
 .price { font-size: 1.3rem; font-weight: 800; letter-spacing: -.015em; }
 
-/* product illustrations */
-/* Product picture: drawing centered. */
 .art { display: grid; place-items: center; }
-/* Size of the drawing. */
 .art svg { width: 62%; height: auto; }
-/* Picture on cards. */
 .art-card { height: 170px; }
-/* Large picture on the product page. */
 .art-large { border-radius: var(--radius); min-height: 380px; border: 1px solid var(--border); }
-/* Drawing in the large picture. */
 .art-large svg { width: 70%; }
-/* Small picture (related products). */
 .art-small { width: 72px; height: 56px; border-radius: 10px; flex: none; }
-/* Thumbnail (cart, checkout). */
 .art-thumb { width: 64px; height: 52px; border-radius: 10px; flex: none; }
-/* Mini picture (admin table). */
 .art-mini { width: 48px; height: 38px; border-radius: 8px; flex: none; }
-/* Drawing in small pictures. */
 .art-small svg, .art-thumb svg, .art-mini svg { width: 80%; }
 
-/* product detail */
-/* Back link. */
 .back-link { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; margin-bottom: 18px; }
-/* Product page: picture and information. */
 .product-detail { display: grid; grid-template-columns: 1.1fr 1fr; gap: 40px; align-items: start; min-height: 380px; }
-/* Information column. */
 .detail-info { display: grid; gap: 12px; }
-/* Product name. */
 .detail-info h1 { font-size: 2.2rem; }
-/* Article number and stock. */
 .detail-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-/* Article number. */
 .sku { font-size: .8rem; color: var(--muted); font-weight: 600; letter-spacing: .03em; }
-/* Price. */
 .detail-price { font-size: 2rem; font-weight: 800; letter-spacing: -.02em; }
-/* 'incl. VAT' after the price. */
 .detail-price small { font-size: .85rem; color: var(--muted); font-weight: 500; letter-spacing: 0; }
-/* Description. */
 .detail-desc { color: var(--text-2); line-height: 1.6; }
-/* Quantity and buttons. */
 .buy-box { display: flex; gap: 10px; align-items: stretch; margin-top: 6px; flex-wrap: wrap; }
-/* Benefit list. */
 .detail-perks { list-style: none; padding: 16px 0 0; margin: 6px 0 0; border-top: 1px solid var(--border); display: grid; gap: 10px; color: var(--text-2); font-size: .92rem; }
-/* One benefit. */
 .detail-perks li { display: flex; align-items: center; gap: 10px; }
-/* Benefit icons. */
 .detail-perks svg { color: var(--primary); }
-/* Related products section. */
 .related { margin-top: 48px; }
-/* Its title. */
 .related h2 { margin-bottom: 14px; }
-/* Grid of related products. */
 .related-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
-/* One related product. */
 .related-card { display: flex; align-items: center; gap: 14px; padding: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); }
-/* Hover. */
 .related-card:hover { border-color: #c7d2fe; text-decoration: none; }
-/* Name and price stacked. */
 .related-card > span { display: grid; }
 
-/* Quantity stepper: buttons and input in one frame. */
 .stepper { display: inline-flex; align-items: stretch; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); overflow: hidden; background: #fff; }
-/* Minus / plus buttons. */
 .stepper button { border: 0; border-radius: 0; padding: 0 13px; font-size: 1.1rem; background: transparent; box-shadow: none; }
-/* Number input. */
 .stepper input { width: 44px; border: 0; border-radius: 0; text-align: center; padding: 8px 0; }
-/* Disabled stepper. */
 .stepper.disabled { opacity: .5; }
 
-/* =========================================================
-   Cart & checkout
-   ========================================================= */
-/* Cart lines card. */
 .cart-lines { padding: 6px 22px; }
-/* One cart line: picture, info, stepper, total. */
 .cart-line { display: grid; grid-template-columns: 64px 1fr auto 110px; gap: 16px; align-items: center; padding: 16px 0; border-bottom: 1px solid var(--border); }
-/* Name, ID and remove link. */
 .cart-line-info { display: grid; gap: 2px; }
-/* Line total. */
 .cart-line-total { text-align: right; font-weight: 700; }
-/* Small remove link. */
 .small-link { justify-self: start; padding: 2px 0 !important; font-size: .82rem; }
-/* Actions below the lines. */
 .cart-actions { display: flex; justify-content: space-between; align-items: center; padding: 14px 0 10px; font-size: .9rem; }
-/* Order summary stays visible while scrolling. */
 .summary { position: sticky; top: 92px; display: grid; gap: 12px; }
-/* Summary title. */
 .summary h3 { margin-bottom: 2px; }
-/* Summary row: label and amount. */
 .summary-row { display: flex; justify-content: space-between; color: var(--text-2); }
-/* 'Free' shipping in green. */
 .summary-row .free { color: var(--success); font-weight: 600; }
-/* Total row. */
 .summary-row.total { color: var(--text); font-weight: 800; font-size: 1.2rem; padding-top: 12px; border-top: 1px solid var(--border); }
 
-/* Checkout progress: numbered steps. */
 .checkout-steps { list-style: none; padding: 0; margin: 0 0 20px; display: flex; gap: 8px; flex-wrap: wrap; font-size: .85rem; counter-reset: step; }
-/* One step. */
 .checkout-steps li { counter-increment: step; display: flex; align-items: center; gap: 8px; color: var(--muted); font-weight: 600; }
-/* Number circle of a step. */
 .checkout-steps li::before { content: counter(step); display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--border-strong); font-size: .75rem; }
-/* Room for the line between steps. */
 .checkout-steps li + li { padding-left: 28px; position: relative; }
-/* Line between steps. */
 .checkout-steps li + li::after { content: ''; position: absolute; left: 4px; top: 50%; width: 18px; height: 2px; background: var(--border-strong); }
-/* Done step: filled circle. */
 .checkout-steps li.done::before { background: var(--primary); border-color: var(--primary); color: #fff; }
-/* Current step text. */
 .checkout-steps li.current { color: var(--text); }
-/* Current step circle. */
 .checkout-steps li.current::before { border-color: var(--primary); color: var(--primary); }
-/* Shipping address box. */
 .address { font-style: normal; line-height: 1.6; padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2); }
-/* Review lines. */
 .review-lines { display: grid; }
-/* One review line. */
 .review-line { display: grid; grid-template-columns: 64px 1fr auto; gap: 14px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); }
-/* No line under the last one. */
 .review-line:last-child { border-bottom: 0; }
-/* Name and quantity stacked. */
 .review-line > span:not(.right) { display: grid; }
 
-/* Narrow centered page (confirmation). */
 .narrow-center { max-width: 720px; }
-/* Confirmation card. */
 .confirmation { text-align: center; display: grid; gap: 12px; justify-items: center; padding: 36px 28px; }
-/* Green check mark circle. */
 .confirm-icon { width: 68px; height: 68px; border-radius: 50%; background: var(--success-soft); color: var(--success); display: grid; place-items: center; }
-/* ERP note. */
 .erp-note { background: var(--primary-soft); color: #2b3f99; padding: 10px 14px; border-radius: var(--radius-sm); font-size: .92rem; }
-/* Item list in the confirmation. */
 .confirmation .order-items { width: 100%; text-align: left; }
-/* Total line. */
 .total-line { font-weight: 800; }
 
-/* =========================================================
-   Orders
-   ========================================================= */
-/* Order card. */
 .order { display: grid; gap: 16px; }
-/* Order head. */
 .order-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
-/* Title line with tags. */
 .order-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 2px; }
-/* Tags in the title without extra margin. */
 .order-title .tag { margin-left: 0; }
-/* Order total. */
 .order-total { font-size: 1.25rem; font-weight: 800; white-space: nowrap; }
-/* Item list. */
 .order-items { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--border); }
-/* One item: name, quantity x price, total. */
 .order-items li { display: grid; grid-template-columns: 1fr auto 110px; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
-/* Footer: address and actions. */
 .order-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
-/* Status select label. */
 .status-select { color: var(--text-2); }
-/* Status select box. */
 .status-select select { width: auto; padding: 6px 10px; }
 
-/* Order progress: four steps. */
 .steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); }
-/* One step. */
 .steps li { position: relative; display: grid; justify-items: center; gap: 6px; font-size: .78rem; color: var(--muted); }
-/* Line to the previous step. */
 .steps li::before { content: ''; position: absolute; top: 6px; left: -50%; width: 100%; height: 2px; background: var(--border); z-index: 0; }
-/* No line before the first step. */
 .steps li:first-child::before { display: none; }
-/* Dot of a step. */
 .steps .bullet { width: 14px; height: 14px; border-radius: 50%; background: var(--surface); border: 2px solid var(--border-strong); z-index: 1; }
-/* Done and current steps in normal text color. */
 .steps li.done, .steps li.current { color: var(--text); }
-/* Lines of done steps in the brand color. */
 .steps li.done::before, .steps li.current::before { background: var(--primary); }
-/* Filled dot of done steps. */
 .steps li.done .bullet { background: var(--primary); border-color: var(--primary); }
-/* Highlighted dot of the current step. */
 .steps li.current .bullet { border-color: var(--primary); box-shadow: 0 0 0 4px var(--primary-soft); }
-/* Bold label of the current step. */
 .steps li.current .label { font-weight: 700; }
-/* Canceled order: red line instead of steps. */
 .steps.canceled { padding: 8px 12px; background: var(--danger-soft); color: var(--danger); border-radius: var(--radius-sm); font-size: .85rem; font-weight: 600; }
 
-/* =========================================================
-   Auth pages
-   ========================================================= */
-/* Login/registration layout: side panel and form. */
 .auth-layout { display: grid; grid-template-columns: 1fr 1.15fr; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; box-shadow: var(--shadow-lg); margin-top: 8px; }
-/* Dark side panel. */
 .auth-aside { background: linear-gradient(160deg, #0b1324, #1b2a55); color: #fff; padding: 40px; display: grid; gap: 24px; align-content: space-between; }
-/* Side panel title. */
 .auth-aside h2 { font-size: 1.7rem; margin: 18px 0 8px; }
-/* Side panel text. */
 .auth-aside p { color: #c7d0e0; }
-/* Advantages list. */
 .auth-aside ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; color: #dbe2f0; font-size: .92rem; }
-/* Green check mark before each advantage. */
 .auth-aside li::before { content: '✓'; color: #8ce99a; margin-right: 10px; font-weight: 800; }
-/* Bike drawing in the side panel. */
 .auth-art { color: #a5b4fc; width: 80%; justify-self: center; }
-/* Form part. */
 .auth-form { padding: 40px; display: grid; gap: 14px; align-content: start; }
-/* Form grid gap. */
 .auth-form.form-grid { gap: 14px; }
-/* Form title. */
 .auth-form h1 { font-size: 1.7rem; }
-/* Demo accounts box. */
 .demo-box { margin-top: 8px; border: 1px dashed var(--border-strong); border-radius: var(--radius); padding: 12px 14px; display: grid; gap: 10px; background: var(--surface-2); }
-/* Its title. */
 .demo-title { font-size: .74rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-/* One demo account. */
 .demo-row { display: flex; align-items: center; gap: 12px; }
-/* Role and login data stacked. */
 .demo-row > span:nth-child(2) { display: grid; flex: 1; }
-/* Role dot. */
 .role-dot { width: 10px; height: 10px; border-radius: 50%; }
-/* Admin: purple. */
 .role-dot.admin { background: #5f3dc4; }
-/* Customer: green. */
 .role-dot.customer { background: var(--success); }
 
-/* =========================================================
-   Account
-   ========================================================= */
-/* My account: side column and content. */
 .account-layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 24px; align-items: start; }
-/* Side column stays visible while scrolling. */
 .account-side { display: grid; gap: 14px; position: sticky; top: 92px; }
-/* Account card. */
 .account-card { display: grid; justify-items: center; gap: 4px; text-align: center; }
-/* ERP tag in the account card. */
 .account-card .tag { margin: 6px 0 0; }
-/* Statistics: two numbers. */
 .account-stats { display: grid; grid-template-columns: 1fr 1fr; width: 100%; margin-top: 14px; border-top: 1px solid var(--border); padding-top: 14px; }
-/* Number and label stacked. */
 .account-stats div { display: grid; }
-/* Label. */
 .account-stats span { color: var(--muted); font-size: .8rem; }
-/* Tab navigation of My account. */
 .side-nav { display: grid; gap: 2px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px; box-shadow: var(--shadow); }
-/* One tab link. */
 .side-nav a { padding: 10px 12px; border-radius: var(--radius-sm); color: var(--text-2); font-weight: 600; }
-/* Hover. */
 .side-nav a:hover { background: var(--bg); text-decoration: none; }
-/* Active tab. */
 .side-nav a.active { background: var(--primary-soft); color: var(--primary); }
 
-/* =========================================================
-   Admin
-   ========================================================= */
-/* Admin head: title and connection chip. */
 .admin-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
-/* Title spacing. */
 .admin-head .page-title { margin-bottom: 4px; }
-/* Admin tabs (scroll horizontally on small screens). */
 .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 22px; overflow-x: auto; }
-/* One tab. */
 .tabs a { padding: 10px 14px; color: var(--muted); font-weight: 600; border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
-/* Hover. */
 .tabs a:hover { color: var(--text); text-decoration: none; }
-/* Active tab with a line below. */
 .tabs a.active { color: var(--primary); border-bottom-color: var(--primary); }
-/* Key figure tiles in four columns. */
 .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-/* One tile. */
 .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; box-shadow: var(--shadow); display: grid; gap: 4px; }
-/* Tile label. */
 .kpi-label { font-size: .78rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
-/* Tile number. */
 .kpi-value { font-size: 1.9rem; font-weight: 800; letter-spacing: -.02em; color: var(--text); }
-/* Tile sub text. */
 .kpi-sub { font-size: .82rem; color: var(--muted); }
-/* Bar chart list. */
 .bars { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
-/* One bar: label, track, number. */
 .bars li { display: grid; grid-template-columns: 90px 1fr 32px; gap: 10px; align-items: center; font-size: .9rem; }
-/* Grey track. */
 .bar-track { height: 10px; background: var(--bg); border-radius: 999px; overflow: hidden; }
-/* Blue filled part. */
 .bar-fill { display: block; height: 100%; background: var(--primary); border-radius: 999px; }
-/* Number. */
 .bar-value { text-align: right; font-weight: 700; color: var(--text); }
-/* Simple list. */
 .simple-list { list-style: none; padding: 0; margin: 0; }
-/* One list line. */
 .simple-list li { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); gap: 10px; }
-/* No line under the last one. */
 .simple-list li:last-child { border-bottom: 0; }
-/* ERP status card when connected: green edge. */
 .erp-status.on { border-left: 4px solid var(--success); }
-/* ERP status card when not connected: grey edge. */
 .erp-status.off { border-left: 4px solid var(--border-strong); }
-/* Fact list: label column and value column. */
 .facts { display: grid; grid-template-columns: 160px 1fr; gap: 10px 16px; margin: 0 0 18px; font-size: .92rem; }
-/* Labels. */
 .facts dt { color: var(--muted); font-weight: 600; }
-/* Values (long URLs may break). */
 .facts dd { margin: 0; word-break: break-all; }
 
-/* modal */
-/* Dark background behind a dialog. */
 .modal-backdrop { position: fixed; inset: 0; background: rgba(16, 24, 40, .45); display: grid; place-items: center; z-index: 60; padding: 16px; animation: fade .15s; }
-/* Dialog box. */
 .modal { background: var(--surface); border-radius: 16px; width: 100%; max-width: 560px; box-shadow: var(--shadow-lg); max-height: calc(100vh - 32px); display: flex; flex-direction: column; }
-/* Dialog head. */
 .modal-head { display: flex; justify-content: space-between; align-items: center; padding: 18px 22px; border-bottom: 1px solid var(--border); }
-/* Dialog content (scrolls when long). */
 .modal-body { padding: 20px 22px; overflow-y: auto; display: grid; gap: 12px; }
-/* Dialog footer with the buttons. */
 .modal-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 22px; border-top: 1px solid var(--border); }
-/* Fade-in animation. */
 @keyframes fade { from { opacity: 0; } }
 
-/* toasts */
-/* Notification area at the bottom right. */
 .toasts { position: fixed; right: 16px; bottom: 16px; display: grid; gap: 8px; z-index: 70; max-width: min(400px, calc(100vw - 32px)); }
-/* One notification. */
 .toast { background: var(--ink); color: #fff; padding: 12px 14px; border-radius: 10px; box-shadow: var(--shadow-lg); font-size: .9rem; animation: slide-in .2s ease-out; border-left: 4px solid var(--primary); }
-/* Success: green edge. */
 .toast.success { border-left-color: #3ccf91; }
-/* Error: red edge. */
 .toast.error { border-left-color: #ff6b4a; }
-/* Slide-in animation. */
 @keyframes slide-in { from { transform: translateY(8px); opacity: 0; } }
 
-/* =========================================================
-   Responsive
-   ========================================================= */
-/* Tablets and small laptops. */
 @media (max-width: 1000px) {
-  /* Key figures in two columns. */
   .kpis { grid-template-columns: repeat(2, 1fr); }
-  /* Benefits in two columns. */
   .perks { grid-template-columns: repeat(2, 1fr); }
-  /* Product page in one column. */
   .product-detail { grid-template-columns: 1fr; gap: 24px; }
-  /* Smaller product picture. */
   .art-large { min-height: 260px; }
 }
-/* Tablets. */
 @media (max-width: 860px) {
-  /* Two-column layouts become one column. */
   .two-col, .two-col.even, .account-layout { grid-template-columns: 1fr; }
-  /* Side columns stop being sticky. */
   .summary, .account-side { position: static; }
-  /* Hide the user name and the cart text in the header. */
   .nav-user-name, .cart-text { display: none; }
-  /* Banner in one column. */
   .hero-inner { grid-template-columns: 1fr; padding-top: 40px; padding-bottom: 48px; }
-  /* Hide the banner picture. */
   .hero-art { display: none; }
-  /* Login/registration in one column. */
   .auth-layout { grid-template-columns: 1fr; }
-  /* Hide the side panel. */
   .auth-aside { display: none; }
 }
-/* Phones. */
 @media (max-width: 640px) {
-  /* Smaller side padding. */
   .container { padding-left: 16px; padding-right: 16px; }
-  /* Header wraps into two rows. */
   .topbar-inner { height: auto; padding-top: 10px; padding-bottom: 10px; flex-wrap: wrap; gap: 8px; }
-  /* Navigation in its own row. */
   .main-nav { order: 3; flex-basis: 100%; }
-  /* Account and cart to the right. */
   .nav-right { margin-left: auto; }
-  /* Benefits: two small columns. */
   .perks { grid-template-columns: 1fr 1fr; gap: 10px; margin-top: -20px; }
-  /* Smaller benefit tiles. */
   .perks > div { padding: 10px 12px; }
-  /* Hide the small benefit text. */
   .perks small { display: none; }
-  /* Full-width search. */
   .catalog-head .toolbar, .search-box, .search-box input { width: 100%; min-width: 0; }
-  /* Forms in one column. */
   .form-grid, .form-grid.three { grid-template-columns: 1fr; }
-  /* No two-column items. */
   .span-2 { grid-column: auto; }
-  /* Cart line: picture and info. */
   .cart-line { grid-template-columns: 64px 1fr; }
-  /* Stepper below the info. */
   .cart-line .stepper { grid-column: 2; justify-self: start; }
-  /* Line total below the stepper. */
   .cart-line-total { grid-column: 2; text-align: left; }
-  /* Order items in two columns. */
   .order-items li { grid-template-columns: 1fr auto; }
-  /* Quantity x price on its own row. */
   .order-items li .muted { grid-column: 1 / -1; }
-  /* Key figures in two columns. */
   .kpis { grid-template-columns: 1fr 1fr; }
-  /* Smaller numbers. */
   .kpi-value { font-size: 1.4rem; }
-  /* Fact lists in one column. */
   .facts { grid-template-columns: 1fr; }
-  /* Less padding in the login form. */
   .auth-form { padding: 24px; }
-  /* Smaller progress labels. */
   .steps { font-size: .7rem; }
 }
 
-/* SAP connectors */
-/* Flexible space between buttons (dialog footers). */
 .spacer { flex: 1; }
-/* ERP status card when the last sync failed: red edge. */
 .erp-status.bad { border-left: 4px solid var(--danger); }
-/* Connection chip in the admin head. */
 .connection-chip { display: inline-flex; align-items: center; gap: 10px; border: 1px solid var(--border); background: var(--surface); border-radius: 999px; padding: 7px 14px 7px 12px; color: var(--text); font-weight: 600; font-size: .88rem; box-shadow: var(--shadow); white-space: nowrap; }
-/* Hover. */
 .connection-chip:hover { text-decoration: none; border-color: var(--border-strong); }
-/* Small label above the connector name. */
 .connection-chip small { display: block; font-size: .68rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); line-height: 1.2; }
-/* Grid of connector (and supplier) cards. */
 .connector-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
-/* One connector card. */
 .connector { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); display: grid; gap: 14px; align-content: start; }
-/* Active connector: blue frame. */
 .connector.active { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft), var(--shadow); }
-/* Card head. */
 .connector-head { display: flex; align-items: center; gap: 12px; }
-/* Square icon. */
 .connector-icon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; background: var(--primary-soft); color: var(--primary); flex: none; }
-/* Name and kind. */
 .connector-title { display: grid; gap: 2px; min-width: 0; flex: 1; }
-/* 'Active' badge. */
 .active-badge { display: inline-flex; align-items: center; gap: 8px; font-size: .78rem; font-weight: 700; color: var(--primary); background: var(--primary-soft); border-radius: 999px; padding: 4px 10px 4px 8px; white-space: nowrap; }
-/* Compact fact list inside cards. */
 .facts.compact { grid-template-columns: 110px 1fr; gap: 6px 12px; margin: 0; font-size: .86rem; }
-/* Card buttons at the bottom. */
 .connector-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: auto; }
-/* Test result line. */
 .test-result { margin: 0; padding: 10px 12px; border-radius: var(--radius-sm); font-size: .86rem; font-weight: 500; word-break: break-word; }
-/* Success: green. */
 .test-result.ok { background: var(--success-soft); color: var(--success); }
-/* Failure: red. */
 .test-result.bad { background: var(--danger-soft); color: var(--danger); }
-/* Green label. */
 .tag.ok { border-color: #a6e3c9; background: var(--success-soft); color: var(--success); margin-left: 0; }
-/* Red label. */
 .tag.bad { border-color: #f6c3b5; background: var(--danger-soft); color: var(--danger); margin-left: 0; }
-/* Target choices of 'Write supplier data to': as many columns as fit. */
 .target-choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin: 4px 0 14px; }
-/* One choice button: title and hint stacked, left aligned. */
 .target-choice { display: grid; gap: 3px; justify-content: stretch; justify-items: start; align-content: start; text-align: left; white-space: normal; padding: 12px 14px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); min-width: 0; }
-/* Choice title. */
 .target-choice strong { font-size: .92rem; }
-/* Choice hint (connector names). */
 .target-choice span { font-size: .76rem; color: var(--muted); font-weight: 500; overflow-wrap: anywhere; }
-/* Selected choice. */
 .target-choice.active, .target-choice.active:hover:not(:disabled) { border-color: var(--primary); background: var(--primary-soft); box-shadow: 0 0 0 2px var(--primary-soft); }
-/* Title of the selected choice. */
 .target-choice.active strong { color: var(--primary); }
-/* Explanation list. */
 .target-notes { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
-/* Per-target labels of a delivery. */
 .target-list { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
-/* Labels may wrap. */
 .target-list .tag { margin-left: 0; white-space: normal; }
-/* Preset buttons in the connector dialog. */
 .preset-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-/* One preset button. */
 .preset { display: grid; gap: 4px; text-align: left; font-weight: 400; padding: 12px 14px; white-space: normal; }
-/* Preset title. */
 .preset strong { font-size: .92rem; }
-/* Preset hint. */
 .preset span { font-size: .78rem; color: var(--muted); line-height: 1.35; }
-/* Hover. */
 .preset:hover:not(:disabled) { border-color: var(--primary); background: var(--primary-soft); }
-/* Small help texts in forms. */
 .form-grid small { font-weight: 400; line-height: 1.45; }
-/* Icon circle of empty states. */
 .empty-icon { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: var(--warning-soft); color: var(--warning); }
-/* Headline of empty states. */
 .empty strong { color: var(--text); font-size: 1.05rem; }
-/* Text width of empty states. */
 .empty > span { max-width: 520px; }
-/* Admin hint box (what to start). */
 .admin-hint { display: grid; gap: 8px; justify-items: center; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 16px; font-size: .88rem; color: var(--text-2); max-width: 560px; }
-/* Phones. */
 @media (max-width: 640px) {
-  /* Cards in one column. */
   .connector-grid { grid-template-columns: 1fr; }
-  /* Presets in one column. */
   .preset-row { grid-template-columns: 1fr; }
-  /* Full-width connection chip. */
   .connection-chip { width: 100%; }
 }
-/* Checkbox labels in forms may wrap. */
 .form-grid label.check { white-space: normal; align-items: flex-start; }
-/* Align the checkbox with the first text line. */
 .form-grid label.check input { margin-top: 3px; }
-/* Values of compact fact lists break only where needed. */
 .facts.compact dd { word-break: normal; overflow-wrap: anywhere; }
-/* Small note under a value. */
 .source-note { display: block; font-size: .74rem; color: var(--muted); margin-top: 3px; }
 
-/* File transfer (Lab 2) */
-/* Long names (files, URLs) may break anywhere. */
 .break { overflow-wrap: anywhere; word-break: break-word; }
-/* Segmented switch (API / File transfer). */
 .segmented { display: inline-flex; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); overflow: hidden; background: var(--surface-2); }
-/* Its buttons. */
 .segmented button { border: 0; border-radius: 0; background: transparent; box-shadow: none; padding: 8px 14px; font-size: .88rem; }
-/* Line between the buttons. */
 .segmented button + button { border-left: 1px solid var(--border-strong); }
-/* Selected button. */
 .segmented button.active { background: var(--ink); color: #fff; }
-/* Flow diagram: steps and arrows in a row. */
 .flow { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; margin-bottom: 14px; }
-/* One step box. */
 .flow-step { display: grid; gap: 4px; align-content: start; justify-items: start; flex: 1 1 150px; min-width: 0; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; }
-/* Step title. */
 .flow-step strong { font-size: .92rem; }
-/* Number in a step. */
 .flow-step .kpi-value { font-size: 1.5rem; line-height: 1.1; }
-/* ERP / channel steps in light blue. */
 .flow-step.erp { background: var(--primary-soft); border-color: #c7d2fe; }
-/* Success step: green edge. */
 .flow-step.ok { border-left: 4px solid var(--success); }
-/* Error step: red edge. */
 .flow-step.bad { border-left: 4px solid var(--danger); }
-/* Smaller icon in a step. */
 .flow-step .connector-icon { width: 32px; height: 32px; }
-/* Arrow between steps. */
 .flow-arrow { flex: 0 1 110px; display: grid; place-items: center; position: relative; padding: 0 10px; min-height: 40px; }
-/* Dashed line of the arrow. */
 .flow-arrow::before { content: ''; position: absolute; left: 8px; right: 14px; top: 50%; border-top: 2px dashed var(--border-strong); }
-/* Arrow head. */
 .flow-arrow::after { content: ''; position: absolute; right: 8px; top: calc(50% - 6px); border: 6px solid transparent; border-left-color: var(--border-strong); }
-/* Arrow label. */
 .flow-arrow span { position: relative; background: var(--surface); font-size: .72rem; color: var(--muted); text-align: center; padding: 2px 4px; line-height: 1.3; }
-/* Two steps stacked (portal + FTP, processed + error). */
 .flow-split { display: grid; gap: 8px; flex: 1 1 150px; margin-left: 16px; }
-/* History cells aligned at the top. */
 .transfer-log td { vertical-align: top; }
-/* File name buttons in tables. */
 .file-cell button.link { padding: 0; text-align: left; white-space: normal; overflow-wrap: anywhere; font-weight: 500; }
-/* Details box under a history row. */
 .transfer-details { margin-top: 6px; font-size: .84rem; }
-/* Lists in the details box. */
 .transfer-details ul { margin: 0 0 6px; padding-left: 18px; }
-/* Small buttons in history rows. */
 .transfer-log button.link.small { padding: 2px 6px; font-size: .8rem; }
-/* Tablets and phones: the flow diagram runs from top to bottom. */
 @media (max-width: 860px) {
-  /* Vertical flow. */
   .flow { flex-direction: column; }
-  /* Full-width steps. */
   .flow-step, .flow-split { flex: none; margin-left: 0; }
-  /* Shorter arrows. */
   .flow-arrow { flex: none; min-height: 46px; }
-  /* Vertical dashed line. */
   .flow-arrow::before { left: 50%; right: auto; top: 6px; bottom: 12px; border-top: 0; border-left: 2px dashed var(--border-strong); }
-  /* Arrow head pointing down. */
   .flow-arrow::after { left: calc(50% - 5px); right: auto; top: auto; bottom: 0; border-left-color: transparent; border-top-color: var(--border-strong); }
 }
-/* Note under the transfer buttons. */
 .transfer-note { margin: 12px 0 0; }
 
-/* Suppliers (Lab 2 extension) */
-/* Wide dialog (mapping profile, acknowledgement). */
 .modal.wide { max-width: 880px; }
-/* Small section titles in dialogs. */
 .subhead { margin: 8px 0 0; font-size: .92rem; }
-/* Field mapping inputs in three columns. */
 .mapping-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 14px; }
-/* Label of a mapping input. */
 .mapping-grid label span { font-size: .85rem; }
-/* Row of checkboxes (rights). */
 .check-row { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; }
-/* File test result. */
 .preview { border-top: 1px solid var(--border); padding-top: 10px; display: grid; gap: 8px; }
-/* Field names of the tested file. */
 .preview code { margin: 0 4px 4px 0; display: inline-block; }
-/* Field names that are used by the mapping. */
 .preview code.used { background: var(--primary-soft); border-color: #c7d2fe; color: var(--primary); }
-/* Compact table (preview). */
 .table.compact th, .table.compact td { padding: 6px 8px; font-size: .82rem; }
-/* Column titles of compact tables. */
 .table.compact th { text-transform: none; letter-spacing: 0; }
-/* Orange label (waiting, partial). */
 .tag.warn { border-color: #f5d6a8; background: var(--warning-soft); color: var(--warning); margin-left: 0; }
-/* Chips without bottom margin (deliveries filter). */
 .chips.flat { margin: 0; }
-/* Smaller chips. */
 .chips.flat .chip { padding: 5px 11px; font-size: .82rem; }
-/* Acknowledgement text as it was sent. */
 pre.report { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .82rem; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; }
-/* Tablets: mapping inputs in two columns. */
 @media (max-width: 860px) { .mapping-grid { grid-template-columns: 1fr 1fr; } }
-/* Phones: mapping inputs in one column. */
 @media (max-width: 640px) { .mapping-grid { grid-template-columns: 1fr; } }

@@ -1,199 +1,118 @@
 <!doctype html>
-<!-- index.html - the supplier portal "SupplyLink": a separate web site for the employees of VeloCity's suppliers. -->
-<!-- It has two views: the login (with demo suppliers) and the dashboard (upload, FTP access, agreed format, -->
-<!-- deliveries). portal.js switches between them and fills them with data from the portal API (api/...). -->
-<!-- Served by server/src/portal/portal.js on its own port (3200) and under /portal/ of the shop. -->
 <html lang="en">
-<!-- Head: metadata, icon and styles. -->
 <head>
-  <!-- Character set. -->
   <meta charset="utf-8">
-  <!-- Responsive layout on phones. -->
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <!-- Title in the browser tab. -->
   <title>Supplier Portal</title>
-  <!-- Tab icon: a small teal square with a rising line, embedded as an SVG data URL (no extra file). -->
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%230f766e'/%3E%3Cpath d='M6 15l4-4 3 3 5-6' stroke='white' stroke-width='2.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
-  <!-- Styles of the portal. -->
   <link rel="stylesheet" href="portal.css">
 </head>
-<!-- Body. -->
 <body>
-  <!-- Top bar. -->
   <header class="top">
-    <!-- Centered width. -->
     <div class="wrap top-inner">
-      <!-- Logo and portal name. -->
       <div class="brand">
-        <!-- Logo icon. -->
         <span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 15l4-4 3 3 6-7"/><path d="M14 7h4v4"/></svg></span>
-        <!-- Name and sub title. -->
         <span><strong>SupplyLink</strong><small>Supplier portal of VeloCity Bike Shop</small></span>
       </div>
-      <!-- Logged-in supplier and logout (hidden until logged in). -->
       <div class="who" id="who" hidden>
-        <!-- Supplier name and user name (filled by portal.js). -->
         <span><strong id="who-supplier"></strong><small id="who-user"></small></span>
-        <!-- Logout button. -->
         <button class="ghost" id="logout">Log out</button>
       </div>
     </div>
   </header>
 
-  <!-- Main content. -->
   <main class="wrap">
-    <!-- login -->
-    <!-- Login view. -->
     <section id="login-view" class="login" hidden>
-      <!-- Login card. -->
       <div class="card login-card">
-        <!-- Title. -->
         <h1>Supplier login</h1>
-        <!-- Short explanation. -->
         <p class="muted">Deliver your product list, prices and stock to VeloCity – in your own file format.</p>
-        <!-- Login form (sent by portal.js, not by the browser). -->
         <form id="login-form">
-          <!-- Username. -->
           <label>Username<input id="username" autocomplete="username" required></label>
-          <!-- Password. -->
           <label>Password<input id="password" type="password" autocomplete="current-password" required></label>
-          <!-- Error message (wrong login). -->
           <p class="error" id="login-error" hidden></p>
-          <!-- Login button. -->
           <button class="primary block" type="submit">Log in</button>
         </form>
-        <!-- Demo suppliers (hidden when the server returns none). -->
         <div id="demo" class="demo" hidden>
-          <!-- Hint. -->
           <p class="muted small">Demo suppliers (one per file format):</p>
-          <!-- One button per demo supplier (filled by portal.js). -->
           <div id="demo-list" class="demo-list"></div>
         </div>
       </div>
-      <!-- How the portal works. -->
       <aside class="login-aside">
-        <!-- Title. -->
         <h2>How it works</h2>
-        <!-- Steps. -->
         <ol>
-          <!-- Upload in the supplier's own format. -->
           <li><strong>Upload</strong> your file here – CSV, Excel, JSON or XML, with your own column names.</li>
-          <!-- Translation and checks. -->
           <li>VeloCity translates it with the format agreed with you and checks every line.</li>
-          <!-- ERP first, then the web shop. -->
           <li>New products, prices and stock are written into VeloCity's SAP ERP and appear in the web shop.</li>
-          <!-- Acknowledgement. -->
           <li>You get an acknowledgement for every file – here and in your FTP <code>/outbox</code>.</li>
         </ol>
       </aside>
     </section>
 
-    <!-- dashboard -->
-    <!-- Dashboard view (after the login). -->
     <section id="app-view" hidden>
-      <!-- Page head. -->
       <div class="page-head">
-        <!-- Greeting and location. -->
         <div>
-          <!-- Greeting (filled by portal.js). -->
           <h1 id="greeting">Deliveries</h1>
-          <!-- Location of the supplier. -->
           <p class="muted" id="location"></p>
         </div>
       </div>
 
-      <!-- Two columns. -->
       <div class="grid">
-        <!-- Left column. -->
         <div class="stack">
-          <!-- Upload card. -->
           <section class="card">
-            <!-- Title. -->
             <h2>Deliver a file</h2>
-            <!-- Drop zone: a label around the file input, so a click opens the file dialog. -->
             <label class="drop" id="drop">
-              <!-- File input (hidden by CSS) with the supported file types. -->
               <input type="file" id="file" accept=".csv,.txt,.tsv,.xlsx,.json,.ndjson,.xml">
-              <!-- Upload icon. -->
               <span class="drop-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg></span>
-              <!-- Instruction. -->
               <strong>Drop your file here or click to choose</strong>
-              <!-- Supported formats and size limit. -->
               <span class="muted small">CSV / TXT, Excel (.xlsx), JSON or XML · max. 5 MB</span>
             </label>
-            <!-- Result of the last upload (filled by portal.js). -->
             <div id="upload-result" class="result" hidden></div>
           </section>
 
-          <!-- FTP card (hidden when FTP is switched off). -->
           <section class="card" id="ftp-card" hidden>
-            <!-- Title. -->
             <h2>FTP access (for your systems)</h2>
-            <!-- Host, port, user, folders (filled by portal.js). -->
             <dl class="facts" id="ftp"></dl>
-            <!-- How FTP deliveries and acknowledgements work. -->
             <p class="muted small">Same password as for this portal. Upload into <code>/inbox</code>; every file gets an
               acknowledgement in <code>/outbox</code> (<code>.ack.txt</code> or <code>.error.txt</code>).</p>
           </section>
 
         </div>
 
-        <!-- Right column. -->
         <div class="stack">
-          <!-- Agreed format card. -->
           <section class="card">
-            <!-- Title. -->
             <h2>Your agreed format</h2>
-            <!-- Format, separator, decimal sign, rights (filled by portal.js). -->
             <dl class="facts" id="format"></dl>
-            <!-- Field mapping: VeloCity field and the supplier's field name. -->
             <table class="table mapping" id="mapping-table">
-              <!-- Column titles. -->
               <thead><tr><th>VeloCity field</th><th>Your field</th></tr></thead>
-              <!-- Rows (filled by portal.js). -->
               <tbody id="mapping"></tbody>
             </table>
-            <!-- Download of the sample file (shown when one exists). -->
             <a href="#" id="sample" class="button" hidden>Download sample file</a>
           </section>
 
         </div>
       </div>
 
-      <!-- Deliveries card. -->
       <section class="card deliveries-card">
-        <!-- Head. -->
         <div class="card-head">
-          <!-- Title. -->
           <h2>Your deliveries</h2>
-          <!-- Hint. -->
           <span class="muted small">updates automatically</span>
         </div>
-        <!-- Scrollable table. -->
         <div class="table-wrap">
-          <!-- Delivery table. -->
           <table class="table">
-            <!-- Column titles. -->
             <thead><tr><th>Received</th><th>File</th><th>Channel</th><th>Status</th><th>Result</th></tr></thead>
-            <!-- Rows (filled by portal.js). -->
             <tbody id="deliveries"></tbody>
           </table>
         </div>
-        <!-- Empty state. -->
         <p class="muted small" id="no-deliveries" hidden>No deliveries yet.</p>
       </section>
     </section>
   </main>
 
-  <!-- Dialog for an acknowledgement / error report. -->
   <dialog id="report">
-    <!-- Title and close button. -->
     <div class="dialog-head"><h2 id="report-title">Acknowledgement</h2><button class="ghost" id="report-close" aria-label="Close">✕</button></div>
-    <!-- The report text. -->
     <pre id="report-text"></pre>
   </dialog>
 
-  <!-- The portal's JavaScript (at the end, so the elements above exist when it runs). -->
   <script src="portal.js"></script>
 </body>
 </html>

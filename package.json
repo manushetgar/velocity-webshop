@@ -8,6 +8,7 @@
     "client"
   ],
   "scripts": {
+    "install:ci": "npm ci",
     "dev": "concurrently -n server,client -c blue,green \"npm run dev -w server\" \"npm run dev -w client\"",
     "build": "npm run build -w client",
     "start": "npm start -w server",
@@ -18,6 +19,10 @@
     "concurrently": "^9.1.0"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=22.12"
+  },
+  "allowScripts": {
+    "better-sqlite3@12.11.1": true,
+    "esbuild@0.28.2": true
   }
 }
