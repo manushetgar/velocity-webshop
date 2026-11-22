@@ -5,7 +5,7 @@ import { syncProductsFromErp } from './productSync.js';
 
 export const erpOrdersEnabled = () => {
   const conn = getActiveConnector();
-  return !!conn && conn.integration !== 'file' && process.env.ERP_ORDERS !== 'false';
+  return !!conn && conn.integration !== 'file';
 };
 
 // The Mini-ERP's cancelOrder currently always answers 422 (ERP-side bug); the shop then leaves the order unchanged.
@@ -13,7 +13,6 @@ const ACTIONS = { PICKED: 'pickOrder', SHIPPED: 'shipOrder', COMPLETED: 'complet
 
 export async function ensureErpCustomer(customer, conn = getActiveConnector()) {
   if (!conn) throw new ErpError('No SAP connector is active.', 503);
-  if (customer.erp_customer_id && customer.erp_connector === conn.id) return customer.erp_customer_id;
   const api = clientFor(conn);
   let c = await api.findCustomerByEmail(customer.email);
   if (!c) {
@@ -27,12 +26,24 @@ export async function ensureErpCustomer(customer, conn = getActiveConnector()) {
 }
 
 async function ensureErpProductIds(lines, conn) {
-  await syncProductsFromErp(conn);
+  const erpProducts = await clientFor(conn).products();
+  if (!Array.isArray(erpProducts))
+    throw new ErpError(`Unexpected product response from ${conn.name}.`, 502);
+
+  const liveById = new Map(erpProducts.map(p => [String(p.productID || '').toUpperCase(), p]));
+  await syncProductsFromErp(conn, erpProducts);
   const reload = db.prepare('SELECT * FROM products WHERE id = ?');
   return lines.map(l => {
     const product = reload.get(l.product.id);
     if (!product.erp_id || product.erp_connector !== conn.id)
       throw new ErpError(`${product.name} (${product.product_id}) does not exist in ${conn.name}.`, 409);
+
+    const live = liveById.get(product.product_id.toUpperCase());
+    const stock = Number(live?.stock);
+    if (!live || !Number.isInteger(stock) || stock < 0)
+      throw new ErpError(`Stock information for "${product.name}" is invalid in ${conn.name}.`, 502);
+    if (stock < l.quantity)
+      throw new ErpError(`Not enough stock for "${product.name}" (available: ${stock}).`, 409);
     return { ...l, product };
   });
 }

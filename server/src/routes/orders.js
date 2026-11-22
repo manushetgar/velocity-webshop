@@ -51,14 +51,21 @@ const refreshStockFromErp = () => {
 };
 
 router.post('/', requireAuth, async (req, res) => {
-  const lines = Array.isArray(req.body.items) ? req.body.items : [];
-  if (lines.length === 0) throw httpError(400, 'Your cart is empty.');
+  const lines = req.body.items;
+  if (!Array.isArray(lines) || lines.length === 0) throw httpError(400, 'Your cart is empty.');
+  if (lines.length > 100) throw httpError(400, 'A cart cannot contain more than 100 lines.');
 
   const merged = new Map();
-  for (const l of lines) {
-    const qty = Number(l.quantity);
-    if (!Number.isInteger(qty) || qty < 1) throw httpError(400, 'Quantities must be whole numbers >= 1.');
-    merged.set(Number(l.productId), (merged.get(Number(l.productId)) || 0) + qty);
+  for (const line of lines) {
+    if (!line || typeof line !== 'object' || Array.isArray(line))
+      throw httpError(400, 'Each cart item must be an object.');
+    const productId = Number(line.productId);
+    const quantity = Number(line.quantity);
+    if (!Number.isSafeInteger(productId) || productId < 1)
+      throw httpError(400, 'Each cart item needs a valid product ID.');
+    if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > 1000)
+      throw httpError(400, 'Quantities must be whole numbers between 1 and 1000.');
+    merged.set(productId, (merged.get(productId) || 0) + quantity);
   }
   let resolved = [...merged].map(([id, quantity]) => {
     const product = db.prepare('SELECT * FROM products WHERE id = ? AND active = 1').get(id);
@@ -71,6 +78,8 @@ router.post('/', requireAuth, async (req, res) => {
     throw httpError(400, 'Please add your address in your profile before checking out.');
 
   const currency = resolved[0].product.currency;
+  if (resolved.some(l => l.product.currency !== currency))
+    throw httpError(400, 'All products in an order must use the same currency.');
   let total = resolved.reduce((sum, l) => sum + l.product.price_cents * l.quantity, 0);
 
   // ERP first: if the ERP rejects the order, nothing is written locally.

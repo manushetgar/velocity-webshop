@@ -151,8 +151,9 @@ Manage connectors in **Admin > SAP connectors**; only one is active at a time.
 | File transfer | Imported from CSV or XLSX snapshots. Change ERP-owned product details in the ERP, not in the shop. | Creates a local order only. A later snapshot can overwrite the locally reduced stock. |
 
 API synchronization runs at startup and every **60 seconds** by default. It also
-runs after relevant changes, or when you press **Sync now**. This is not a continuous
-live connection. `ERP_ORDERS=false` can disable ERP checkout in API mode.
+runs after relevant changes, or when you press **Sync now**. Product display and checkout
+still query current ERP stock in real time. API-mode checkout always creates the order
+in the ERP; use a disconnected connector or file mode for local checkout.
 
 Removing a product in the shop is a local soft delete, not a deletion from the ERP.
 
