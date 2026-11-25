@@ -1,7 +1,10 @@
 import { getActiveConnector } from './connectors.js';
 import { readServiceKey } from './serviceKey.js';
 
-const TIMEOUT_MS = () => Number(process.env.ERP_TIMEOUT_MS || 10000);
+const TIMEOUT_MS = () => {
+  const configured = Number(process.env.ERP_TIMEOUT_MS || 10000);
+  return Number.isSafeInteger(configured) && configured > 0 ? configured : 10000;
+};
 const tokens = new Map();
 
 export const clearToken = connectorId => tokens.delete(connectorId);
@@ -47,8 +50,13 @@ async function oauthToken(conn) {
     body: 'grant_type=client_credentials',
   });
   if (!res.ok) throw new ErpError(`ERP token request failed (${res.status})`, 502);
-  const data = await res.json();
-  tokens.set(conn.id, { value: data.access_token, expiresAt: Date.now() + (data.expires_in - 60) * 1000 });
+  let data;
+  try { data = await res.json(); } catch {
+    throw new ErpError('ERP token response is not valid JSON.', 502);
+  }
+  if (!data.access_token || !Number.isFinite(Number(data.expires_in)))
+    throw new ErpError('ERP token response is incomplete.', 502);
+  tokens.set(conn.id, { value: data.access_token, expiresAt: Date.now() + (Number(data.expires_in) - 60) * 1000 });
   return data.access_token;
 }
 
@@ -62,6 +70,7 @@ function describeHttpError(status, raw) {
   try { message = JSON.parse(raw).error?.message || message; } catch {}
   if (status === 401 || status === 403) message = `access denied (${status}) - check user/password or service key`;
   if (status === 404 && /route|does not exist/i.test(raw)) message = 'app not found (404) - is the ERP app started?';
+  if (status === 409 && /stock/i.test(message)) message = `Not enough stock for the requested product. ${message}`;
   return message;
 }
 
@@ -84,7 +93,12 @@ async function call(conn, path, { method = 'GET', body, retries = 2 } = {}) {
         throw new ErpError(`ERP: ${message}`, status);
       }
       const text = await res.text();
-      return res.headers.get('content-type')?.includes('json') ? JSON.parse(text) : text;
+      if (res.headers.get('content-type')?.includes('json')) {
+        try { return JSON.parse(text); } catch {
+          throw new ErpError('ERP returned invalid JSON.', 502);
+        }
+      }
+      return text;
     } catch (e) {
       if (!e.retryable || attempt >= retries) throw e;
       await new Promise(r => setTimeout(r, 500 * 2 ** attempt));

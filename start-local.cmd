@@ -3,6 +3,9 @@ rem Local demo: starts the Mini-ERP (cds watch, :4004) and the shop (npm run dev
 rem Edit ERP_DIR if the course repository is cloned elsewhere.
 set ERP_DIR=%USERPROFILE%\systems-integration\src\simple-erp
 if not exist "%ERP_DIR%\package.json" (
+  set ERP_DIR=%~dp0..\systems-integration\src\simple-erp
+)
+if not exist "%ERP_DIR%\package.json" (
   echo Mini-ERP not found in %ERP_DIR%
   echo Edit ERP_DIR in start-local.cmd
   pause

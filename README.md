@@ -115,8 +115,10 @@ npm run dev
 The API health check confirms the shop server is responding; it does not check ERP connectivity.
 
 **Windows shortcut:** after installing both applications, [start-local.cmd](start-local.cmd)
-starts the ERP and shop in separate windows. It expects the ERP at
-`%USERPROFILE%\systems-integration\src\simple-erp`; edit `ERP_DIR` in the script if needed.
+starts the ERP and shop in separate windows. It first looks for the ERP at
+`%USERPROFILE%\systems-integration\src\simple-erp`, then in a sibling
+`systems-integration\src\simple-erp` folder next to this checkout. Edit `ERP_DIR`
+in the script if your ERP is elsewhere.
 It uses your existing shop settings, so it does not reactivate a disconnected connector.
 
 ## Try the shop
@@ -149,8 +151,9 @@ Manage connectors in **Admin > SAP connectors**; only one is active at a time.
 | File transfer | Imported from CSV or XLSX snapshots. Change ERP-owned product details in the ERP, not in the shop. | Creates a local order only. A later snapshot can overwrite the locally reduced stock. |
 
 API synchronization runs at startup and every **60 seconds** by default. It also
-runs after relevant changes, or when you press **Sync now**. This is not a continuous
-live connection. `ERP_ORDERS=false` can disable ERP checkout in API mode.
+runs after relevant changes, or when you press **Sync now**. Product display and checkout
+still query current ERP stock in real time. API-mode checkout always creates the order
+in the ERP; use a disconnected connector or file mode for local checkout.
 
 Removing a product in the shop is a local soft delete, not a deletion from the ERP.
 

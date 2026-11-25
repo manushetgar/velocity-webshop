@@ -3,6 +3,7 @@ import { db } from '../db.js';
 import { requireAdmin } from '../auth.js';
 import { getStock } from '../services/inventory.js';
 import { getActiveConnector } from '../services/connectors.js';
+import { clientFor, ErpError } from '../services/erpClient.js';
 import { createProductInErp, updateProductInErp } from '../services/erpMasterData.js';
 import { syncIfShopEmpty } from '../services/erpSync.js';
 import { CATEGORIES } from '../catalog.js';
@@ -12,7 +13,7 @@ const router = Router();
 
 const INITIAL_DATA_USERS = ['', 'system', 'anonymous'];
 
-export function productToApi(p) {
+export function productToApi(p, liveStock = null) {
   return {
     id: p.id,
     productId: p.product_id,
@@ -20,7 +21,7 @@ export function productToApi(p) {
     description: p.description || '',
     price: p.price_cents / 100,
     currency: p.currency,
-    stock: getStock(p.id),
+    stock: liveStock ?? getStock(p.id),
     category: p.category || 'Other',
     active: !!p.active,
     erpManaged: !!p.erp_id || !!p.erp_connector,
@@ -38,23 +39,46 @@ export function visibleProductsFilter() {
 
 const load = id => db.prepare('SELECT * FROM products WHERE id = ?').get(id);
 
+async function liveStockById() {
+  const conn = getActiveConnector();
+  if (!conn || conn.integration === 'file') return null;
+  const products = await clientFor(conn).products();
+  if (!Array.isArray(products))
+    throw new ErpError(`Unexpected product response from ${conn.name}.`, 502);
+
+  const result = new Map();
+  for (const product of products) {
+    const id = String(product.productID || '').trim().toUpperCase();
+    const stock = Number(product.stock);
+    if (!id || !Number.isInteger(stock) || stock < 0)
+      throw new ErpError(`Invalid stock data returned by ${conn.name}.`, 502);
+    result.set(id, stock);
+  }
+  return result;
+}
+
 router.get('/', async (req, res) => {
   await syncIfShopEmpty();
+  const liveStock = await liveStockById();
   const includeInactive = req.query.all === 'true' && req.user?.role === 'admin';
   const f = visibleProductsFilter();
   const rows = db.prepare(`SELECT * FROM products WHERE ${f.sql} ${includeInactive ? '' : 'AND active = 1'}
                            ORDER BY category, name`).all(...f.params);
-  res.json(rows.map(productToApi));
+  res.json(rows
+    .filter(p => !liveStock || liveStock.has(p.product_id))
+    .map(p => productToApi(p, liveStock?.get(p.product_id))));
 });
 
 router.get('/categories', (_req, res) => res.json(CATEGORIES));
 
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   const p = load(req.params.id);
   const conn = getActiveConnector();
-  const visible = p && (p.active || req.user?.role === 'admin') && (!conn || p.erp_connector === conn.id);
+  const liveStock = await liveStockById();
+  const visible = p && (p.active || req.user?.role === 'admin') && (!conn || p.erp_connector === conn.id)
+    && (!liveStock || liveStock.has(p.product_id));
   if (!visible) throw httpError(404, 'Product not found.');
-  res.json(productToApi(p));
+  res.json(productToApi(p, liveStock?.get(p.product_id)));
 });
 
 function validateProduct(body, partial = false) {
