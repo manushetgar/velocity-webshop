@@ -52,10 +52,14 @@ const refreshStockFromErp = () => {
 
 router.post('/', requireAuth, async (req, res) => {
   const lines = req.body.items;
+  // Treat checkout input as untrusted. These checks happen before product lookup, ERP calls,
+  // or writes, so malformed payloads leave all systems unchanged.
   if (!Array.isArray(lines) || lines.length === 0) throw httpError(400, 'Your cart is empty.');
   if (lines.length > 100) throw httpError(400, 'A cart cannot contain more than 100 lines.');
 
   const merged = new Map();
+  // A crafted or accidental cart may contain the same product twice. Merge it first so
+  // validation checks the full requested quantity instead of checking each line separately.
   for (const line of lines) {
     if (!line || typeof line !== 'object' || Array.isArray(line))
       throw httpError(400, 'Each cart item must be an object.');
@@ -68,6 +72,8 @@ router.post('/', requireAuth, async (req, res) => {
     merged.set(productId, (merged.get(productId) || 0) + quantity);
   }
   let resolved = [...merged].map(([id, quantity]) => {
+    // The API identifies local shop products by SQLite ID; erpOrders later maps these
+    // to ERP product IDs. Inactive products are excluded at this boundary.
     const product = db.prepare('SELECT * FROM products WHERE id = ? AND active = 1').get(id);
     if (!product) throw httpError(400, `Product ${id} is not available.`);
     return { product, quantity };
@@ -82,11 +88,15 @@ router.post('/', requireAuth, async (req, res) => {
     throw httpError(400, 'All products in an order must use the same currency.');
   let total = resolved.reduce((sum, l) => sum + l.product.price_cents * l.quantity, 0);
 
-  // ERP first: if the ERP rejects the order, nothing is written locally.
+  // ERP first is the key ordering rule for API mode. The function waits for the ERP order response;
+  // if stock is rejected, the local transaction below is never started and no shop order is created.
   const erpOrder = erpOrdersEnabled() ? await createErpOrder(customer, resolved, currency) : null;
   if (erpOrder) ({ lines: resolved, totalCents: total } = erpOrder);
 
   const create = db.transaction(() => {
+    // This transaction keeps the shop's stock copy, order header, and order items consistent.
+    // ERP mode mirrors stock already accepted by the ERP. Standalone/file mode uses reserve(),
+    // whose conditional UPDATE both checks and decrements local stock as one SQL statement.
     if (erpOrder) mirrorErpReservation(resolved);
     else reserve(resolved);
     const info = db.prepare(`INSERT INTO orders (customer_id, status, total_cents, currency, ship_name, ship_street,
@@ -103,6 +113,8 @@ router.post('/', requireAuth, async (req, res) => {
   });
 
   const orderId = create();
+  // The HTTP response depends on the local mirror being committed. The background refresh is
+  // best-effort only; subsequent product requests will still obtain current stock directly from the ERP.
   if (erpOrder) refreshStockFromErp();
   res.status(201).json(orderToApi(loadOrder(orderId, req.user)));
 });

@@ -14,6 +14,8 @@ const ACTIONS = { PICKED: 'pickOrder', SHIPPED: 'shipOrder', COMPLETED: 'complet
 export async function ensureErpCustomer(customer, conn = getActiveConnector()) {
   if (!conn) throw new ErpError('No SAP connector is active.', 503);
   const api = clientFor(conn);
+  // Match by e-mail because the ERP's in-memory data may have been recreated after a restart.
+  // Reusing an obsolete local erp_customer_id could point to a missing customer.
   let c = await api.findCustomerByEmail(customer.email);
   if (!c) {
     c = await api.createCustomer({
@@ -26,11 +28,14 @@ export async function ensureErpCustomer(customer, conn = getActiveConnector()) {
 }
 
 async function ensureErpProductIds(lines, conn) {
+  // This is the checkout-time stock read, separate from the product-page read.
+  // It narrows the stale-data window and also obtains the ERP identifiers required by the order payload.
   const erpProducts = await clientFor(conn).products();
   if (!Array.isArray(erpProducts))
     throw new ErpError(`Unexpected product response from ${conn.name}.`, 502);
 
   const liveById = new Map(erpProducts.map(p => [String(p.productID || '').toUpperCase(), p]));
+  // Refresh the local product copy so IDs, names, and prices match the same ERP response.
   await syncProductsFromErp(conn, erpProducts);
   const reload = db.prepare('SELECT * FROM products WHERE id = ?');
   return lines.map(l => {
@@ -44,6 +49,8 @@ async function ensureErpProductIds(lines, conn) {
       throw new ErpError(`Stock information for "${product.name}" is invalid in ${conn.name}.`, 502);
     if (stock < l.quantity)
       throw new ErpError(`Not enough stock for "${product.name}" (available: ${stock}).`, 409);
+    // Two customers can both pass this check while one unit remains. Nothing is locked or reserved here;
+    // the final decision must happen inside the ERP's order write/stock-decrement handling.
     return { ...l, product };
   });
 }
@@ -51,9 +58,12 @@ async function ensureErpProductIds(lines, conn) {
 export async function createErpOrder(customer, lines, currency) {
   const conn = getActiveConnector();
   if (!conn) throw new ErpError('No SAP connector is active.', 503);
+  // Resolve product IDs and perform the fresh stock pre-check before contacting the order endpoint.
   const resolved = await ensureErpProductIds(lines, conn);
   const totalCents = resolved.reduce((sum, l) => sum + l.product.price_cents * l.quantity, 0);
   const customerId = await ensureErpCustomer(customer, conn);
+  // This OData POST is the synchronous decision point: checkout waits for the ERP to accept or reject it.
+  // Order POST retries are disabled in erpClient because a lost response may hide an already committed order.
   const order = await clientFor(conn).createOrder({
     customer_ID: customerId,
     orderDate: new Date().toISOString().slice(0, 10),

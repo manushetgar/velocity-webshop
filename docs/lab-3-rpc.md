@@ -351,10 +351,69 @@ The result is `400` with `Each cart item needs a valid product ID.` No ERP order
 
 The RPC boundary handles concurrency, temporary failures, malformed upstream responses, invalid client input, and ambiguous write timeouts deliberately rather than relying on best-effort behavior.
 
-## Relevant code
+## Lab 3 file mind map
 
-- `server/src/routes/products.js`: live stock RPC for catalog and detail views.
-- `server/src/services/erpClient.js`: timeout, retries, and malformed-response handling.
-- `server/src/services/erpOrders.js`: real-time checkout pre-check and ERP order RPC.
-- `server/src/routes/orders.js`: payload validation and ERP-first local persistence.
-- `server/test/lab3-rpc.test.js`: concurrent checkout and failure-mode coverage.
+```mermaid
+mindmap
+  root((Lab 3: RPC))
+    Browser and configuration
+      README.md
+        Setup and mode overview
+      package.json
+        Runs the behavior test
+      server/.env.example
+        ERP URL and timeout settings
+    Shop API
+      products.js
+        Live stock reads
+        Catalog and detail RPC
+      erpClient.js
+        HTTP timeout
+        Retry rules
+        JSON and error mapping
+      erpOrders.js
+        Checkout stock pre-check
+        ERP order RPC
+      orders.js
+        Input validation
+        ERP-first local persistence
+    Verification
+      lab3-rpc.test.js
+        Concurrent checkout contract
+        Network and response failures
+    Documentation
+      lab-3-rpc.md
+        Concepts and demo flow
+```
+
+### File responsibility table
+
+The first nine rows are files changed by the Lab 3 commit. `inventory.js` is included separately because it is existing code called by the checkout route and helps explain the local-mode race guard.
+
+| File | Changed in Lab 3? | What it does | Relevant concern |
+|---|:---:|---|---|
+| `server/src/routes/products.js` | Yes | Fetches live ERP products and replaces SQLite stock in catalog/detail responses | Live stock RPC; fail closed when ERP is unavailable |
+| `server/src/services/erpClient.js` | Yes | Central HTTP/RPC client for REST and OData | Timeout, connectivity `503`, retryable `5xx`, malformed JSON `502`, error mapping, no write retries |
+| `server/src/services/erpOrders.js` | Yes | Resolves customers/products, performs a fresh stock pre-check, and posts the ERP order | Checkout race gap; synchronous ERP decision |
+| `server/src/routes/orders.js` | Yes | Validates cart input, calls ERP first, then mirrors the accepted order locally | Payload validation; no local order after ERP rejection; local atomic SQLite transaction |
+| `server/test/lab3-rpc.test.js` | Yes, added | Drives two checkout requests, ERP failures, malformed responses, and timeouts | Verifies one winning checkout in the fake ERP and failure handling |
+| `server/.env.example` | Yes | Documents `ERP_TIMEOUT_MS` and RPC configuration | Network timeout setup |
+| `package.json` | Yes | Adds/runs the server test command | How to execute Lab 3 verification |
+| `README.md` | Yes | Documents API mode and ERP-first checkout | User-facing setup and mode explanation |
+| `docs/lab-3-rpc.md` | Yes, added | Lab presentation, concepts, demos, and this navigation map | Learning and presentation guide |
+| `server/src/services/inventory.js` | No | Existing local stock reservation helper used in non-ERP mode | Race-safe local `UPDATE ... WHERE stock >= quantity` |
+
+### Quick route to each problem
+
+| Question | Start here | Then follow |
+|---|---|---|
+| Where is live stock fetched? | `products.js` → `liveStockById()` | `erpClient.js` → `products()` |
+| How are network/timeouts handled? | `erpClient.js` → `fetchWithTimeout()` | `call()` → Express error handler in `server/src/index.js` |
+| Which ERP errors are retried? | `erpClient.js` → `call()` | Retryable timeout/503 and ERP 5xx; order POST uses `retries: 0` |
+| Where is the checkout stock pre-check? | `erpOrders.js` → `ensureErpProductIds()` | `createErpOrder()` → ERP `POST /Orders` |
+| Where is the final ERP stock decision intended to occur? | ERP `simpleerp-service.js` | `simpleerp.js` → `updateProductStock()` |
+| Where is the race-safe local stock update? | `inventory.js` → `reserve()` | Wrapped by `orders.js`'s SQLite transaction |
+| Where are local orders created? | `orders.js` → `router.post('/')` | ERP success first, then local `INSERT`s |
+| Where is the concurrent behavior tested? | `lab3-rpc.test.js` → two `Promise.all` checkout requests | Fake ERP drains pending requests in order |
+
+> **Important distinction:** CAP provides transaction/rollback semantics for an ERP request, but the current ERP handler performs a stock read followed by an absolute update. The strongest explicit check-and-decrement guard in this repository is the conditional SQLite `UPDATE` in `inventory.js`; the fake-ERP test verifies the shop-side contract rather than proving simultaneous CAP database isolation.

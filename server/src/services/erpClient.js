@@ -25,14 +25,20 @@ export class ErpError extends Error {
 
 async function fetchWithTimeout(url, opts) {
   try {
+    // AbortSignal gives all ERP calls the same deadline. ERP_TIMEOUT_MS is configurable;
+    // without it, a stopped or slow ERP could leave the shop request waiting indefinitely.
     return await fetch(url, { ...opts, signal: AbortSignal.timeout(TIMEOUT_MS()) });
   } catch (e) {
+    // Network refusal and timeout are reported to the Express error handler as 503.
+    // The retryable flag lets safe read operations repeat, while write callers can disable retries.
     const reason = e.name === 'TimeoutError' ? `timeout after ${TIMEOUT_MS()} ms` : e.cause?.code || e.message;
     throw new ErpError(`ERP not reachable (${reason})`, 503, true);
   }
 }
 
 async function oauthToken(conn) {
+  // OAuth tokens are cached because the ERP data calls need the token, not the credentials.
+  // The refresh uses the same timeout and upstream-response validation as normal ERP calls.
   const cached = tokens.get(conn.id);
   if (cached && cached.expiresAt > Date.now()) return cached.value;
   let c;
@@ -66,6 +72,7 @@ async function authHeader(conn) {
 }
 
 function describeHttpError(status, raw) {
+  // OData normally returns its useful message inside error.message; fall back to bounded raw text.
   let message = raw.slice(0, 150).trim() || `HTTP ${status}`;
   try { message = JSON.parse(raw).error?.message || message; } catch {}
   if (status === 401 || status === 403) message = `access denied (${status}) - check user/password or service key`;
@@ -82,10 +89,14 @@ async function call(conn, path, { method = 'GET', body, retries = 2 } = {}) {
         headers: { Authorization: await authHeader(conn), 'Content-Type': 'application/json' },
         body: body ? JSON.stringify(body) : undefined,
       });
+      // An OAuth 401 may mean the cached token expired on the server. Refresh it once,
+      // but do not loop forever or turn repeated authentication failures into business errors.
       if (res.status === 401 && conn.auth === 'oauth' && tokens.has(conn.id) && attempt === 0) {
         clearToken(conn.id);
         continue;
       }
+      // The browser receives 502 for an invalid/upstream ERP answer, not the ERP's raw 5xx.
+      // Temporary 5xx failures are retryable for read calls because another GET has no side effects.
       if (res.status >= 500) throw new ErpError(`ERP error ${res.status}`, 502, true);
       if (!res.ok) {
         const message = describeHttpError(res.status, await res.text());
@@ -94,12 +105,15 @@ async function call(conn, path, { method = 'GET', body, retries = 2 } = {}) {
       }
       const text = await res.text();
       if (res.headers.get('content-type')?.includes('json')) {
+        // A successful HTTP status is not enough: checkout code expects a usable JSON/OData payload.
         try { return JSON.parse(text); } catch {
           throw new ErpError('ERP returned invalid JSON.', 502);
         }
       }
       return text;
     } catch (e) {
+      // Only timeouts, connectivity failures, and ERP 5xx responses marked retryable are repeated.
+      // The exponential delay avoids immediately hammering an ERP that is recovering.
       if (!e.retryable || attempt >= retries) throw e;
       await new Promise(r => setTimeout(r, 500 * 2 ** attempt));
     }
@@ -109,6 +123,8 @@ async function call(conn, path, { method = 'GET', body, retries = 2 } = {}) {
 const quote = s => `'${String(s).replace(/'/g, "''")}'`;
 
 export function clientFor(conn) {
+  // REST endpoints provide the shop-facing product/customer/order reads. OData is used for ERP entities
+  // and actions. Keeping the URL and protocol choice here leaves checkout/business code protocol-independent.
   const rest = (path, opts) => call(conn, path, opts);
   const odata = (path, opts) => call(conn, '/odata/v4/simple-erp' + path, opts);
   return {
@@ -117,7 +133,8 @@ export function clientFor(conn) {
     customers: () => rest('/rest/api/customers()'),
     orders: () => rest('/rest/api/orders()'),
 
-    // POSTs use retries: 0 because they are not idempotent (a retry could create a duplicate order).
+    // Mutating requests use retries: 0. The client may time out after the ERP committed,
+    // so replaying a create/action request could duplicate the order or apply an action twice.
     findCustomerByEmail: async email =>
       (await odata(`/Customers?$filter=email eq ${encodeURIComponent(quote(email))}&$top=1`)).value[0] || null,
     createCustomer: data => odata('/Customers', { method: 'POST', body: data, retries: 0 }),

@@ -41,11 +41,17 @@ const load = id => db.prepare('SELECT * FROM products WHERE id = ?').get(id);
 
 async function liveStockById() {
   const conn = getActiveConnector();
+  // File-transfer mode deliberately uses the last imported snapshot.
+  // API mode does not use the SQLite stock column as its answer because that copy may be stale.
   if (!conn || conn.integration === 'file') return null;
+  // Both catalog and product-detail requests reach this helper and make a synchronous RPC to the ERP.
+  // A network or response error therefore reaches the browser instead of silently falling back to old stock.
   const products = await clientFor(conn).products();
   if (!Array.isArray(products))
     throw new ErpError(`Unexpected product response from ${conn.name}.`, 502);
 
+  // The shop database ID is local, while productID (for example BOTL0100) is shared with the ERP.
+  // Building this map lets the route replace only the stock field while retaining shop-side display data.
   const result = new Map();
   for (const product of products) {
     const id = String(product.productID || '').trim().toUpperCase();
@@ -59,6 +65,8 @@ async function liveStockById() {
 
 router.get('/', async (req, res) => {
   await syncIfShopEmpty();
+  // In API mode, every visible catalog item receives live stock from the map above.
+  // If the ERP request fails, this route fails too; it never presents a stale quantity as purchasable.
   const liveStock = await liveStockById();
   const includeInactive = req.query.all === 'true' && req.user?.role === 'admin';
   const f = visibleProductsFilter();
@@ -74,6 +82,8 @@ router.get('/categories', (_req, res) => res.json(CATEGORIES));
 router.get('/:id', async (req, res) => {
   const p = load(req.params.id);
   const conn = getActiveConnector();
+  // The detail page repeats the live lookup because stock can change after the catalog was rendered.
+  // This is a freshness check, not a reservation for a later checkout.
   const liveStock = await liveStockById();
   const visible = p && (p.active || req.user?.role === 'admin') && (!conn || p.erp_connector === conn.id)
     && (!liveStock || liveStock.has(p.product_id));
