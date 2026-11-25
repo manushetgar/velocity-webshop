@@ -351,39 +351,97 @@ The result is `400` with `Each cart item needs a valid product ID.` No ERP order
 
 The RPC boundary handles concurrency, temporary failures, malformed upstream responses, invalid client input, and ambiguous write timeouts deliberately rather than relying on best-effort behavior.
 
-## Lab 3 file mind map
+## Lab 3 file tree
 
-```mermaid
-mindmap
-  root((Lab 3: RPC))
-    Browser and configuration
-      README.md
-        Setup and mode overview
-      package.json
-        Runs the behavior test
-      server/.env.example
-        ERP URL and timeout settings
-    Shop API
-      products.js
-        Live stock reads
-        Catalog and detail RPC
-      erpClient.js
-        HTTP timeout
-        Retry rules
-        JSON and error mapping
-      erpOrders.js
-        Checkout stock pre-check
-        ERP order RPC
-      orders.js
-        Input validation
-        ERP-first local persistence
-    Verification
-      lab3-rpc.test.js
-        Concurrent checkout contract
-        Network and response failures
-    Documentation
-      lab-3-rpc.md
-        Concepts and demo flow
+Read the tree from **request entry point** to **ERP communication**:
+
+```text
+velocity-webshop/
+|
++-- client/
+|   `-- src/pages/CheckoutPage.jsx
+|       [starts checkout with POST /api/orders; displays success or the returned stock/network error]
+|
++-- server/
+|   |
+|   +-- src/
+|   |   |
+|   |   +-- routes/
+|   |   |   |
+|   |   |   +-- products.js
+|   |   |   |   [catalog/detail entry points; calls the ERP for current stock]
+|   |   |   |   [fails with an error instead of displaying stale SQLite stock in API mode]
+|   |   |   |
+|   |   |   `-- orders.js
+|   |   |       [checkout entry point: validates the cart and customer]
+|   |   |       [calls createErpOrder() first, so an ERP rejection creates no local order]
+|   |   |       [after ERP success: stock mirror + order + items in one SQLite transaction]
+|   |   |
+|   |   `-- services/
+|   |       |
+|   |       +-- erpOrders.js
+|   |       |   [fresh checkout stock pre-check; resolves shop products/customers to ERP IDs]
+|   |       |   [calls OData POST /Orders and returns the ERP order ID to orders.js]
+|   |       |   [two buyers can pass the read here, so this is not a reservation]
+|   |       |
+|   |       +-- erpClient.js
+|   |       |   [shared REST/OData network layer]
+|   |       |   [timeout + unreachable ERP -> 503]
+|   |       |   [ERP 5xx is retryable for reads -> exposed as 502 if retries fail]
+|   |       |   [malformed JSON -> 502; ERP order POSTs use retries: 0]
+|   |       |
+|   |       `-- inventory.js
+|   |           [not changed by the Lab 3 commit; handles standalone local-stock checkout]
+|   |           [conditional UPDATE checks and decrements stock in one SQL statement]
+|   |
+|   +-- test/
+|   |   `-- lab3-rpc.test.js
+|   |       [added by Lab 3; starts two competing checkouts against a fake ERP]
+|   |       [tests one success, one stock conflict, retries, timeout, invalid JSON, and 503]
+|   |
+|   `-- .env.example
+|       [documents ERP connection settings, including ERP_TIMEOUT_MS]
+|
++-- package.json
+|   [npm test runs the Lab 3 behavior test]
+|
++-- README.md
+|   [documents API mode, setup, live stock, and ERP-first checkout]
+|
+`-- docs/
+    `-- lab-3-rpc.md
+        [concept explanation, demos, file tree, and code-navigation guide]
+```
+
+The ERP-side transaction is in the separate Mini-ERP project:
+
+```text
+systems-integration/src/simple-erp/
+|
+`-- srv/
+    |
+    +-- simpleerp-service.js
+    |   [CAP CREATE handler for Orders]
+    |   [before CREATE: validate items and current stock]
+    |   [during CREATE: call updateProductStock(), then continue the order insert]
+    |
+    `-- simpleerp.js
+        [updateProductStock(): read product stock, validate it, and issue the stock UPDATE]
+        [CAP request transaction makes order + stock changes roll back together on an error]
+        [current code is a read then absolute update, not an atomic WHERE stock >= quantity update]
+```
+
+## Two main paths through the tree
+
+```text
+1. Show stock
+   browser -> products.js -> erpClient.js -> ERP REST /rest/api/products() -> browser
+
+2. Place order
+   browser -> orders.js -> erpOrders.js -> erpClient.js
+           -> ERP OData POST /Orders
+           -> ERP service validates and deducts stock
+           -> orders.js saves the local mirror only after ERP success
 ```
 
 ### File responsibility table
